@@ -1,21 +1,33 @@
-import { createConfig } from "ponder";
+import { createConfig, mergeAbis } from "ponder";
 import { http } from "viem";
+import { Automatorv21ABI } from "./abis/Automatorv21ABI";
+import { Automatorv11ABI } from "./abis/Automatorv11ABI";
+import { UniswapV3PoolABI } from "./abis/UniswapV3PoolABI";
 import { erc20ABI } from "./abis/erc20ABI";
 
 export default createConfig({
   networks: {
-    mainnet: {
-      chainId: 1,
-      transport: http(process.env.PONDER_RPC_URL_1),
+    arbitrum: {
+      chainId: 42161,
+      transport: http(process.env.PONDER_RPC_URL_42161),
+      maxRequestsPerSecond: 300,
     },
   },
   contracts: {
+    Automatorv21: {
+      network: "arbitrum",
+      abi: mergeAbis([Automatorv21ABI, Automatorv11ABI]),
+      address: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C","0x01E371c500C49beA2fa985334f46A8Dc906253Ea"],
+      startBlock: 188249317,
+      endBlock: 213059866,
+    },
+    UniswapV3Pool: {
+      network: "arbitrum",
+      abi: UniswapV3PoolABI,
+    },
     ERC20: {
-      network: "mainnet",
+      network: "arbitrum",
       abi: erc20ABI,
-      address: "0x32353A6C91143bfd6C7d363B546e62a9A2489A20",
-      startBlock: 13142655,
-      endBlock: 13150000,
     },
   },
 });

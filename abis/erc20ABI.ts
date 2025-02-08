@@ -1,147 +1,109 @@
 export const erc20ABI = [
   {
-    stateMutability: "view",
-    type: "function",
-    inputs: [],
-    name: "DOMAIN_SEPARATOR",
-    outputs: [{ name: "", internalType: "bytes32", type: "bytes32" }],
-  },
-  {
-    stateMutability: "view",
-    type: "function",
-    inputs: [
-      { name: "", internalType: "address", type: "address" },
-      { name: "", internalType: "address", type: "address" },
+    "type": "function",
+    "name": "allowance",
+    "inputs": [
+      { "name": "owner", "type": "address", "internalType": "address" },
+      { "name": "spender", "type": "address", "internalType": "address" }
     ],
-    name: "allowance",
-    outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
   },
   {
-    stateMutability: "nonpayable",
-    type: "function",
-    inputs: [
-      { name: "spender", internalType: "address", type: "address" },
-      { name: "amount", internalType: "uint256", type: "uint256" },
+    "type": "function",
+    "name": "approve",
+    "inputs": [
+      { "name": "spender", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
     ],
-    name: "approve",
-    outputs: [{ name: "", internalType: "bool", type: "bool" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "nonpayable"
   },
   {
-    stateMutability: "view",
-    type: "function",
-    inputs: [{ name: "", internalType: "address", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
-  },
-  {
-    stateMutability: "view",
-    type: "function",
-    inputs: [],
-    name: "decimals",
-    outputs: [{ name: "", internalType: "uint8", type: "uint8" }],
-  },
-  {
-    stateMutability: "view",
-    type: "function",
-    inputs: [],
-    name: "name",
-    outputs: [{ name: "", internalType: "string", type: "string" }],
-  },
-  {
-    stateMutability: "view",
-    type: "function",
-    inputs: [{ name: "", internalType: "address", type: "address" }],
-    name: "nonces",
-    outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
-  },
-  {
-    stateMutability: "nonpayable",
-    type: "function",
-    inputs: [
-      { name: "owner", internalType: "address", type: "address" },
-      { name: "spender", internalType: "address", type: "address" },
-      { name: "value", internalType: "uint256", type: "uint256" },
-      { name: "deadline", internalType: "uint256", type: "uint256" },
-      { name: "v", internalType: "uint8", type: "uint8" },
-      { name: "r", internalType: "bytes32", type: "bytes32" },
-      { name: "s", internalType: "bytes32", type: "bytes32" },
+    "type": "function",
+    "name": "balanceOf",
+    "inputs": [
+      { "name": "account", "type": "address", "internalType": "address" }
     ],
-    name: "permit",
-    outputs: [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
   },
   {
-    stateMutability: "view",
-    type: "function",
-    inputs: [],
-    name: "symbol",
-    outputs: [{ name: "", internalType: "string", type: "string" }],
+    "type": "function",
+    "name": "totalSupply",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256", "internalType": "uint256" }],
+    "stateMutability": "view"
   },
   {
-    stateMutability: "view",
-    type: "function",
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
-  },
-  {
-    stateMutability: "nonpayable",
-    type: "function",
-    inputs: [
-      { name: "to", internalType: "address", type: "address" },
-      { name: "amount", internalType: "uint256", type: "uint256" },
+    "type": "function",
+    "name": "transfer",
+    "inputs": [
+      { "name": "to", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
     ],
-    name: "transfer",
-    outputs: [{ name: "", internalType: "bool", type: "bool" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "nonpayable"
   },
   {
-    stateMutability: "nonpayable",
-    type: "function",
-    inputs: [
-      { name: "from", internalType: "address", type: "address" },
-      { name: "to", internalType: "address", type: "address" },
-      { name: "amount", internalType: "uint256", type: "uint256" },
+    "type": "function",
+    "name": "transferFrom",
+    "inputs": [
+      { "name": "from", "type": "address", "internalType": "address" },
+      { "name": "to", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
     ],
-    name: "transferFrom",
-    outputs: [{ name: "", internalType: "bool", type: "bool" }],
+    "outputs": [{ "name": "", "type": "bool", "internalType": "bool" }],
+    "stateMutability": "nonpayable"
   },
   {
-    type: "event",
-    anonymous: false,
-    inputs: [
+    "type": "event",
+    "name": "Approval",
+    "inputs": [
       {
-        name: "owner",
-        internalType: "address",
-        type: "address",
-        indexed: true,
+        "name": "owner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        name: "spender",
-        internalType: "address",
-        type: "address",
-        indexed: true,
+        "name": "spender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
       {
-        name: "amount",
-        internalType: "uint256",
-        type: "uint256",
-        indexed: false,
-      },
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
     ],
-    name: "Approval",
+    "anonymous": false
   },
   {
-    type: "event",
-    anonymous: false,
-    inputs: [
-      { name: "from", internalType: "address", type: "address", indexed: true },
-      { name: "to", internalType: "address", type: "address", indexed: true },
+    "type": "event",
+    "name": "Transfer",
+    "inputs": [
       {
-        name: "amount",
-        internalType: "uint256",
-        type: "uint256",
-        indexed: false,
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
     ],
-    name: "Transfer",
-  },
+    "anonymous": false
+  }
 ] as const;
