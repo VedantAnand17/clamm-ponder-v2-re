@@ -143,7 +143,7 @@ export const redeemEvent = onchainTable("redeem_event", (t) => ({
 
 // todo
 export const StrategyTotals = onchainTable("strategy_totals", (t) => ({
-  strategy: t.hex().notNull(),
+  strategy: t.hex().primaryKey(),
   total_deposits: t.bigint(),
   total_withdrawals: t.bigint(),
   total_shares: t.bigint(),
@@ -152,4 +152,193 @@ export const StrategyTotals = onchainTable("strategy_totals", (t) => ({
   total_deposit_fees: t.bigint(),
   total_withdrawal_fees: t.bigint(),
 }));
+
+
+
+
+// option market
+
+
+// trader account
+export const trader_account = onchainTable("trader_account", (t) => ({
+  address: t.hex().primaryKey(),
+}));
+
+
+// token representing trader's position in the market
+export const erc721_token = onchainTable(
+  "erc721_token", 
+  (t) => ({
+    id: t.bigint(),
+    market: t.hex().notNull(),
+    owner: t.hex().notNull(),
+    status: t.text().notNull(), // 'active', 'exercised', 'settled'
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.market] }),
+    ownerIdx: index("owner_index").on(table.owner),
+    statusIdx: index("status_index").on(table.status)
+  })
+);
+
+
+// option market from which trader can mint options. Each market supports multiple pools but they should have the same call and put assets.
+export const option_markets = onchainTable("option_markets", (t) => ({
+  address: t.hex().primaryKey(),
+  name: t.text(),
+  symbol: t.text(),
+  primePool: t.hex().notNull(),
+  optionPricing: t.hex().notNull(),
+  dpFee: t.hex().notNull(),
+  callAsset: t.hex().notNull(),
+  putAsset: t.hex().notNull(),
+}));
+
+// Junction table for many-to-many relationship between traders and options markets
+export const trader_market_position = onchainTable(
+  "trader_market_position",
+  (t) => ({
+    trader: t.hex(),
+    market: t.hex(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.trader, table.market] }),
+  })
+);
+
+// Update relations to use the junction table representing the many-to-many relationship between trader, positions and option markets
+export const trader_account_relations = relations(trader_account, ({ many }) => ({
+  positions: many(trader_market_position, {
+    fields: [trader_account.address],
+    references: [trader_market_position.trader],
+  }),
+}));
+
+// Update relations to use the junction table representing the many-to-many relationship between trader, option markets and trader positions
+export const option_markets_relations = relations(option_markets, ({ many }) => ({
+  positions: many(trader_market_position, {
+    fields: [option_markets.address],
+    references: [trader_market_position.market],
+  }),
+}));
+
+export const trader_market_position_relations = relations(trader_market_position, ({ one }) => ({
+  trader: one(trader_account, {
+    fields: [trader_market_position.trader],
+    references: [trader_account.address],
+  }),
+  market: one(option_markets, {
+    fields: [trader_market_position.market],
+    references: [option_markets.address],
+  }),
+}));
+
+// erc721 transfer event
+export const erc721TransferEvent = onchainTable("erc721TransferEvent", (t) => ({
+  id: t.text().primaryKey(),
+  timestamp: t.integer().notNull(),
+  from: t.hex().notNull(),
+  to: t.hex().notNull(),
+  token: t.bigint().notNull(),
+}));
+
+
+// mint option event
+export const mintOptionEvent = onchainTable("mintOptionEvent", (t) => ({
+  id: t.text().primaryKey(),
+  timestamp: t.integer().notNull(),
+  user: t.hex().notNull(),
+  market: t.hex().notNull(),
+  optionId: t.bigint(),
+  isCall: t.boolean(),
+  premiumAmount: t.bigint(),
+  totalAssetWithdrawn: t.bigint(),
+  protocolFees: t.bigint(),
+}));
+
+// Add relations for mintOptionEvent
+export const mintOptionEventRelations = relations(mintOptionEvent, ({ one }) => ({
+  user_account: one(trader_account, {
+    fields: [mintOptionEvent.user],
+    references: [trader_account.address],
+  }),
+  option_market: one(option_markets, {
+    fields: [mintOptionEvent.market],
+    references: [option_markets.address],
+  }),
+}));
+
+// Add relations for erc721TransferEvent
+export const erc721TransferEventRelations = relations(erc721TransferEvent, ({ one }) => ({
+  from_account: one(trader_account, {
+    fields: [erc721TransferEvent.from],
+    references: [trader_account.address],
+  }),
+  to_account: one(trader_account, {
+    fields: [erc721TransferEvent.to],
+    references: [trader_account.address],
+  }),
+  token: one(erc721_token, {
+    fields: [erc721TransferEvent.token],
+    references: [erc721_token.id],
+  }),
+}));
+
+// Add relations for erc721_token
+export const erc721_token_relations = relations(erc721_token, ({ one }) => ({
+  owner_account: one(trader_account, {
+    fields: [erc721_token.owner],
+    references: [trader_account.address],
+  }),
+  market: one(option_markets, {
+    fields: [erc721_token.market],
+    references: [option_markets.address],
+  }),
+}));
+
+// Exercise option event
+export const exerciseOptionEvent = onchainTable("exerciseOptionEvent", (t) => ({
+  id: t.text().primaryKey(),
+  timestamp: t.integer().notNull(),
+  user: t.hex().notNull(),
+  market: t.hex().notNull(),
+  optionId: t.bigint().notNull(),
+  totalProfit: t.bigint().notNull(),
+  totalAssetRelocked: t.bigint().notNull(),
+}));
+
+// Settle option event
+export const settleOptionEvent = onchainTable("settleOptionEvent", (t) => ({
+  id: t.text().primaryKey(),
+  timestamp: t.integer().notNull(),
+  user: t.hex().notNull(),
+  market: t.hex().notNull(),
+  optionId: t.bigint().notNull(),
+}));
+
+// Add relations for exerciseOptionEvent
+export const exerciseOptionEventRelations = relations(exerciseOptionEvent, ({ one }) => ({
+  user_account: one(trader_account, {
+    fields: [exerciseOptionEvent.user],
+    references: [trader_account.address],
+  }),
+  option_market: one(option_markets, {
+    fields: [exerciseOptionEvent.market],
+    references: [option_markets.address],
+  }),
+}));
+
+// Add relations for settleOptionEvent
+export const settleOptionEventRelations = relations(settleOptionEvent, ({ one }) => ({
+  user_account: one(trader_account, {
+    fields: [settleOptionEvent.user],
+    references: [trader_account.address],
+  }),
+  option_market: one(option_markets, {
+    fields: [settleOptionEvent.market],
+    references: [option_markets.address],
+  }),
+}));
+
+
 

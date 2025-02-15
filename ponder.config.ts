@@ -4,6 +4,7 @@ import { Automatorv21ABI } from "./abis/Automatorv21ABI";
 import { Automatorv11ABI } from "./abis/Automatorv11ABI";
 import { UniswapV3PoolABI } from "./abis/UniswapV3PoolABI";
 import { erc20ABI } from "./abis/erc20ABI";
+import { OptionMarketABI } from "./abis/OptionMarketABI";
 
 export default createConfig({
   networks: {
@@ -21,6 +22,13 @@ export default createConfig({
       startBlock: 188249317,
       endBlock: 213059866,
     },
+    OptionMarket: {
+      network: "arbitrum",
+      abi: OptionMarketABI,
+      address: ["0xcD697B919AA000378fe429b47eb0fF0D17d3D435", "0x502751c59fEb16959526f1f8aa767D84b028bFbD"],
+      startBlock: 297859265,
+    },
+
     UniswapV3Pool: {
       network: "arbitrum",
       abi: UniswapV3PoolABI,

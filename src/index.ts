@@ -5,13 +5,21 @@ import {
   approvalEvent,
   depositCapEvent,
   depositEvent,
+  erc721_token,
+  erc721TransferEvent,
   owner,
   rebalanceEvent,
   redeemEvent,
   setOwnerEvents,
   strategist,
   strategy,
+  trader_account,
   transferEvent,
+  mintOptionEvent,
+  trader_market_position,
+  option_markets,
+  exerciseOptionEvent,
+  settleOptionEvent,
 } from "ponder:schema";
 import { bigint, replaceBigInts } from "ponder";
 import { initialiseStrategyData } from "./hooks/initialiseStrategyData";
@@ -206,5 +214,159 @@ ponder.on("Automatorv21:Redeem", async ({ event, context }) => {
       amount: event.args.assetsWithdrawn,
       shares: event.args.shares,
       timestamp: Number(event.block.timestamp),
+    });
+});
+
+
+// option market
+
+ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
+  await context.db
+    .insert(trader_account)
+    .values({ address: event.args.from })
+    .onConflictDoNothing();
+  
+  await context.db
+    .insert(trader_account)
+    .values({ address: event.args.to })
+    .onConflictDoNothing();
+
+  await context.db
+    .insert(erc721_token)
+    .values({
+      id: event.args.id,
+      owner: event.args.to,
+      market: event.log.address,
+      status: 'active'  // Default to active for new tokens
+    })
+    .onConflictDoUpdate({
+      set: { 
+        owner: event.args.to,
+        market: event.log.address
+        // Don't update status on transfer
+      }
+    });
+
+  await context.db.insert(erc721TransferEvent).values({
+    id: event.log.id,
+    from: event.args.from,
+    to: event.args.to,
+    token: event.args.id,
+    timestamp: Number(event.block.timestamp),
+  });
+});
+
+ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
+  await context.db
+    .insert(trader_account)
+    .values({ address: event.args.user })
+    .onConflictDoNothing();
+
+  await context.db
+    .insert(erc721_token)
+    .values({
+      id: event.args.tokenId,
+      owner: event.args.user,
+      market: event.log.address,
+      status: 'active'
+    })
+    .onConflictDoUpdate({
+      set: { 
+        owner: event.args.user,
+        market: event.log.address,
+        status: 'active'
+      }
+    });
+
+  await context.db.insert(mintOptionEvent).values({
+    id: event.log.id,
+    market: event.log.address,
+    timestamp: Number(event.block.timestamp),
+    user: event.args.user,
+    optionId: event.args.tokenId,
+    isCall: event.args.isCall,
+    premiumAmount: event.args.premiumAmount,
+    totalAssetWithdrawn: event.args.totalAssetWithdrawn,
+    protocolFees: event.args.protocolFees,
+  });
+
+  await context.db
+    .insert(trader_market_position)
+    .values({
+      trader: event.args.user,
+      market: event.log.address,
+    })
+    .onConflictDoNothing();
+});
+
+ponder.on("OptionMarket:LogOptionsMarketInitialized", async ({ event, context }) => {
+  try {
+    await context.db.insert(option_markets).values({
+      address: event.log.address,
+      primePool: event.args.primePool,
+      optionPricing: event.args.optionPricing,
+      dpFee: event.args.dpFee,
+      callAsset: event.args.callAsset,
+      putAsset: event.args.putAsset,
+    });
+  } catch (error) {
+    console.error("Error processing LogOptionsMarketInitialized event:", error);
+    throw error;
+  }
+});
+
+ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
+  await context.db
+    .insert(trader_account)
+    .values({ address: event.args.user })
+    .onConflictDoNothing();
+
+  await context.db.insert(exerciseOptionEvent).values({
+    id: event.log.id,
+    market: event.log.address,
+    timestamp: Number(event.block.timestamp),
+    user: event.args.user,
+    optionId: event.args.tokenId,
+    totalProfit: event.args.totalProfit,
+    totalAssetRelocked: event.args.totalAssetRelocked,
+  });
+
+  await context.db
+    .insert(erc721_token)
+    .values({
+      id: event.args.tokenId,
+      market: event.log.address,
+      owner: event.args.user,
+      status: 'exercised'
+    })
+    .onConflictDoUpdate({
+      set: { status: 'exercised' }
+    });
+});
+
+ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
+  await context.db
+    .insert(trader_account)
+    .values({ address: event.args.user })
+    .onConflictDoNothing();
+
+  await context.db.insert(settleOptionEvent).values({
+    id: event.log.id,
+    market: event.log.address,
+    timestamp: Number(event.block.timestamp),
+    user: event.args.user,
+    optionId: event.args.tokenId,
+  });
+
+  await context.db
+    .insert(erc721_token)
+    .values({
+      id: event.args.tokenId,
+      market: event.log.address,
+      owner: event.args.user,
+      status: 'settled'
+    })
+    .onConflictDoUpdate({
+      set: { status: 'settled' }
     });
 });
