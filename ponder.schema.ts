@@ -1,5 +1,6 @@
 import { index, onchainTable, primaryKey, relations } from "ponder";
 
+// account that deposits to automator
 export const account = onchainTable("account", (t) => ({
   address: t.hex().primaryKey(),
   balance: t.bigint().notNull(),
@@ -141,17 +142,7 @@ export const redeemEvent = onchainTable("redeem_event", (t) => ({
 }));
 
 
-// todo
-export const StrategyTotals = onchainTable("strategy_totals", (t) => ({
-  strategy: t.hex().primaryKey(),
-  total_deposits: t.bigint(),
-  total_withdrawals: t.bigint(),
-  total_shares: t.bigint(),
-  total_assets: t.bigint(),
-  total_liquidity: t.bigint(),
-  total_deposit_fees: t.bigint(),
-  total_withdrawal_fees: t.bigint(),
-}));
+
 
 
 
@@ -340,5 +331,164 @@ export const settleOptionEventRelations = relations(settleOptionEvent, ({ one })
   }),
 }));
 
+// tvl and other stats section
+
+export const optionMarketTotals = onchainTable("option_market_totals", (t) => ({
+  timestamp: t.integer().notNull(),
+  market: t.hex().primaryKey(),
+  callAssetOutside: t.bigint(),
+  putAssetOutside: t.bigint(),
+  totalPremiumPaid: t.bigint(),
+  totalInterestVolume: t.bigint(),
+  totalUniqueTraders: t.bigint(),
+}));
+
+export const liquidityHandlerTotals = onchainTable("liquidity_handler_totals", (t) => ({
+  timestamp: t.integer().notNull(),
+  liquidityHandler: t.hex().primaryKey(),
+  token0Inside: t.bigint(),
+  token1Inside: t.bigint(),
+  totalTransactionVolume: t.bigint(),
+  totalUniqueLPs: t.bigint(),
+}));
+
+export const liquidityHandlerActiveLiquidity = onchainTable("liquidity_handler_active_liquidity", (t) => ({
+  timestamp: t.integer().notNull(),
+  liquidityHandler: t.hex().primaryKey(),
+  pool: t.hex().notNull(),
+  tickLower: t.bigint(),
+  tickUpper: t.bigint(),
+  usedLiquidity: t.bigint(),
+  freeLiquidity: t.bigint(),
+}));
 
 
+// position manager
+
+
+// liquidity handler
+
+// LP accounts
+export const lp_account = onchainTable("lp_account", (t) => ({
+  address: t.hex().primaryKey(),
+}));
+
+// Core liquidity position tracking
+export const user_liquidity_position = onchainTable(
+  "user_liquidity_position",
+  (t) => ({
+    token_id: t.bigint(),
+    handler_address: t.hex(),
+    user_address: t.hex(),
+    total_liquidity: t.bigint(),
+    used_liquidity: t.bigint(),
+    pool: t.hex(),
+    tick_lower: t.integer(),
+    tick_upper: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.token_id, table.handler_address] }),
+  }),
+);
+
+// Handler configuration
+export const liquidity_handler = onchainTable("liquidity_handler", (t) => ({
+  address: t.hex().primaryKey(),
+  is_paused: t.boolean(),
+  global_hook_allowed: t.boolean(),
+  default_hook_allowed: t.boolean(),
+  premium_asset: t.hex(),
+}));
+
+// Position Manager Events
+export const mint_position_event = onchainTable("mint_position_event", (t) => ({
+  id: t.text().primaryKey(),
+  handler_address: t.hex(),
+  token_id: t.bigint(),
+  user_address: t.hex(),
+  liquidity_minted: t.bigint(),
+  pool: t.hex(),
+  hook: t.hex(),
+  tick_lower: t.integer(),
+  tick_upper: t.integer(),
+  timestamp: t.integer(),
+}));
+
+export const burn_position_event = onchainTable("burn_position_event", (t) => ({
+  id: t.text().primaryKey(),
+  handler_address: t.hex(),
+  token_id: t.bigint(),
+  user_address: t.hex(),
+  liquidity_burned: t.bigint(),
+  pool: t.hex(),
+  hook: t.hex(),
+  tick_lower: t.integer(),
+  tick_upper: t.integer(),
+  timestamp: t.integer(),
+}));
+
+export const use_position_event = onchainTable("use_position_event", (t) => ({
+  id: t.text().primaryKey(),
+  token_id: t.bigint(),
+  liquidity_used: t.bigint(),
+  timestamp: t.integer(),
+}));
+
+export const unuse_position_event = onchainTable("unuse_position_event", (t) => ({
+  id: t.text().primaryKey(),
+  token_id: t.bigint(),
+  liquidity_unused: t.bigint(),
+  timestamp: t.integer(),
+}));
+
+export const donation_event = onchainTable("donation_event", (t) => ({
+  id: t.text().primaryKey(),
+  token_id: t.bigint(),
+  premium_amount_earned: t.bigint(),
+  timestamp: t.integer(),
+}));
+
+export const premium_collection_event = onchainTable("premium_collection_event", (t) => ({
+  id: t.text().primaryKey(),
+  token_id: t.bigint(),
+  user_address: t.hex(),
+  amount: t.bigint(),
+  timestamp: t.integer(),
+}));
+
+// Liquidity Handler Events
+export const hook_update_event = onchainTable("hook_update_event", (t) => ({
+  id: t.text().primaryKey(),
+  handler_address: t.hex(),
+  hook_address: t.hex(),
+  allowed: t.boolean(),
+  timestamp: t.integer(),
+}));
+
+export const global_hook_update_event = onchainTable("global_hook_update_event", (t) => ({
+  id: t.text().primaryKey(),
+  handler_address: t.hex(),
+  global_allowed: t.boolean(),
+  default_allowed: t.boolean(),
+  timestamp: t.integer(),
+}));
+
+export const handler_pause_event = onchainTable("handler_pause_event", (t) => ({
+  id: t.text().primaryKey(),
+  handler_address: t.hex(),
+  is_paused: t.boolean(),
+  account: t.hex(),
+  timestamp: t.integer(),
+}));
+
+// Relations
+export const user_liquidity_position_relations = relations(user_liquidity_position, ({ one }) => ({
+  account: one(lp_account, {
+    fields: [user_liquidity_position.user_address],
+    references: [lp_account.address],
+  }),
+  handler: one(liquidity_handler, {
+    fields: [user_liquidity_position.handler_address],
+    references: [liquidity_handler.address],
+  }),
+}));

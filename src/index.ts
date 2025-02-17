@@ -20,6 +20,18 @@ import {
   option_markets,
   exerciseOptionEvent,
   settleOptionEvent,
+  lp_account,
+  mint_position_event,
+  user_liquidity_position,
+  burn_position_event,
+  use_position_event,
+  unuse_position_event,
+  donation_event,
+  premium_collection_event,
+  hook_update_event,
+  global_hook_update_event,
+  handler_pause_event,
+  liquidity_handler,
 } from "ponder:schema";
 import { bigint, replaceBigInts } from "ponder";
 import { initialiseStrategyData } from "./hooks/initialiseStrategyData";
@@ -132,7 +144,7 @@ ponder.on("Automatorv21:DepositCapSet", async ({ event, context }) => {
     })
     .onConflictDoUpdate({
       set: {
-        owner: event.log.address,
+        owner: event.transaction.from,
         ...strategyData
       }
     });
@@ -369,4 +381,198 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
     .onConflictDoUpdate({
       set: { status: 'settled' }
     });
+});
+
+
+// liquidity handler & position manager
+
+ponder.on("PositionManager:LogMintPosition", async ({ event, context }) => {
+  await context.db
+    .insert(lp_account)
+    .values({ address: event.args.user })
+    .onConflictDoNothing();
+
+  await context.db.insert(mint_position_event).values({
+    id: event.log.id,
+    handler_address: event.args._handler,
+    token_id: event.args.tokenId,
+    user_address: event.args.user,
+    liquidity_minted: event.args.sharesMinted,
+    pool: event.args.pool,
+    hook: event.args.hook,
+    tick_lower: event.args.tickLower,
+    tick_upper: event.args.tickUpper,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(user_liquidity_position)
+    .values({
+      token_id: event.args.tokenId,
+      handler_address: event.args._handler,
+      user_address: event.args.user,
+      total_liquidity: event.args.sharesMinted,
+      used_liquidity: 0n,
+      pool: event.args.pool,
+      tick_lower: event.args.tickLower,
+      tick_upper: event.args.tickUpper,
+    })
+    .onConflictDoUpdate((row) => ({
+      total_liquidity: row.total_liquidity + event.args.sharesMinted,
+    }));
+});
+
+ponder.on("PositionManager:LogBurnPosition", async ({ event, context }) => {
+  await context.db.insert(burn_position_event).values({
+    id: event.log.id,
+    handler_address: event.args._handler,
+    token_id: event.args.tokenId,
+    user_address: event.args.user,
+    liquidity_burned: event.args.sharesBurned,
+    pool: event.args.pool,
+    hook: event.args.hook,
+    tick_lower: event.args.tickLower,
+    tick_upper: event.args.tickUpper,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(user_liquidity_position)
+    .values({
+      token_id: event.args.tokenId,
+      handler_address: event.args._handler,
+      total_liquidity: 0n,
+    })
+    .onConflictDoUpdate((row) => ({
+      total_liquidity: row.total_liquidity - event.args.sharesBurned,
+    }));
+});
+
+ponder.on("PositionManager:LogUsePosition", async ({ event, context }) => {
+  await context.db.insert(use_position_event).values({
+    id: event.log.id,
+    token_id: event.args.tokenId,
+    liquidity_used: event.args.liquidityUsed,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(user_liquidity_position)
+    .values({
+      token_id: event.args.tokenId,
+      used_liquidity: event.args.liquidityUsed,
+    })
+    .onConflictDoUpdate((row) => ({
+      used_liquidity: row.used_liquidity + event.args.liquidityUsed,
+    }));
+});
+
+ponder.on("PositionManager:LogUnusePosition", async ({ event, context }) => {
+  await context.db.insert(unuse_position_event).values({
+    id: event.log.id,
+    token_id: event.args.tokenId,
+    liquidity_unused: event.args.liquidityUnused,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(user_liquidity_position)
+    .values({
+      token_id: event.args.tokenId,
+      used_liquidity: 0n,
+    })
+    .onConflictDoUpdate((row) => ({
+      used_liquidity: row.used_liquidity - event.args.liquidityUnused,
+    }));
+});
+
+ponder.on("PositionManager:LogDonation", async ({ event, context }) => {
+  await context.db.insert(donation_event).values({
+    id: event.log.id,
+    token_id: event.args.tokenId,
+    premium_amount_earned: event.args.premiumAmountEarned,
+    timestamp: Number(event.block.timestamp),
+  });
+});
+
+ponder.on("PositionManager:LogRemovePremium", async ({ event, context }) => {
+  await context.db.insert(premium_collection_event).values({
+    id: event.log.id,
+    token_id: event.args.tokenId,
+    user_address: event.args.user,
+    amount: event.args.amount,
+    timestamp: Number(event.block.timestamp),
+  });
+});
+
+ponder.on("LiquidityHandler:LogUpdateHookUse", async ({ event, context }) => {
+  await context.db.insert(hook_update_event).values({
+    id: event.log.id,
+    handler_address: event.log.address,
+    hook_address: event.args.hook,
+    allowed: event.args.allowed,
+    timestamp: Number(event.block.timestamp),
+  });
+});
+
+ponder.on("LiquidityHandler:LogUpdateGlobalHookUse", async ({ event, context }) => {
+  await context.db.insert(global_hook_update_event).values({
+    id: event.log.id,
+    handler_address: event.log.address,
+    global_allowed: event.args.globalAllowed,
+    default_allowed: event.args.defaultAllowed,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(liquidity_handler)
+    .values({
+      address: event.log.address,
+      global_hook_allowed: event.args.globalAllowed,
+      default_hook_allowed: event.args.defaultAllowed,
+    })
+    .onConflictDoUpdate((row) => ({
+      global_hook_allowed: event.args.globalAllowed,
+      default_hook_allowed: event.args.defaultAllowed,
+    }));
+});
+
+ponder.on("LiquidityHandler:Paused", async ({ event, context }) => {
+  await context.db.insert(handler_pause_event).values({
+    id: event.log.id,
+    handler_address: event.log.address,
+    is_paused: true,
+    account: event.args.account,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(liquidity_handler)
+    .values({
+      address: event.log.address,
+      is_paused: true,
+    })
+    .onConflictDoUpdate((row) => ({
+      is_paused: true,
+    }));
+});
+
+ponder.on("LiquidityHandler:Unpaused", async ({ event, context }) => {
+  await context.db.insert(handler_pause_event).values({
+    id: event.log.id,
+    handler_address: event.log.address,
+    is_paused: false,
+    account: event.args.account,
+    timestamp: Number(event.block.timestamp),
+  });
+
+  await context.db
+    .insert(liquidity_handler)
+    .values({
+      address: event.log.address,
+      is_paused: false,
+    })
+    .onConflictDoUpdate((row) => ({
+      is_paused: false,
+    }));
 });
