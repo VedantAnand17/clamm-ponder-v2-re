@@ -29,11 +29,10 @@ export default createConfig({
           startBlock: 188249317,
           endBlock: 213059866,
         },
-        // tenderly: {
-        //   address: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C","0x01E371c500C49beA2fa985334f46A8Dc906253Ea"],
-        //   startBlock: 188249317,
-        //   endBlock: 213059866,
-        // },
+        tenderly: {
+          address: ["0x5C110e73Eb9EfF814C545c5B03eC6CC2218843f8"],
+          startBlock: 26497566,
+        },
       },
       abi: mergeAbis([Automatorv21ABI, Automatorv11ABI]),
     },

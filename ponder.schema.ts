@@ -2,21 +2,31 @@ import { index, onchainTable, primaryKey, relations } from "ponder";
 
 // account that deposits to automator
 export const account = onchainTable("account", (t) => ({
-  address: t.hex().primaryKey(),
+  address: t.hex(),
+  chainId: t.integer().notNull(),
   balance: t.bigint().notNull(),
   isOwner: t.boolean().notNull(),
+}), (table) => ({
+  pk: primaryKey({ columns: [table.address, table.chainId] }),
 }));
 
 export const strategist = onchainTable("strategist", (t) => ({
-  address: t.hex().primaryKey(),
+  address: t.hex(),
+  chainId: t.integer().notNull(),
+}), (table) => ({
+  pk: primaryKey({ columns: [table.address, table.chainId] }),
 }));
 
 export const owner = onchainTable("owner", (t) => ({
-  address: t.hex().primaryKey(),
+  address: t.hex(),
+  chainId: t.integer().notNull(),
+}), (table) => ({
+  pk: primaryKey({ columns: [table.address, table.chainId] }),
 }));
 
 export const strategy = onchainTable("strategy", (t) => ({
-  address: t.hex().primaryKey(),
+  address: t.hex(),
+  chainId: t.integer().notNull(),
   strategist: t.hex(),
   owner: t.hex(),
   pool: t.hex(),
@@ -28,6 +38,8 @@ export const strategy = onchainTable("strategy", (t) => ({
   deposit_fee_pips: t.bigint(),
   position_manager: t.hex(),
   liquidity_handler: t.hex(),
+}), (table) => ({
+  pk: primaryKey({ columns: [table.address, table.chainId] }),
 }));
 
 export const strategistRelations = relations(strategist, ({ many }) => ({
@@ -57,23 +69,26 @@ export const allowance = onchainTable(
   (t) => ({
     owner: t.hex(),
     spender: t.hex(),
+    chainId: t.integer().notNull(),
     value: t.bigint().notNull(),
   }),
   (table) => ({
-    pk: primaryKey({ columns: [table.owner, table.spender] }),
+    pk: primaryKey({ columns: [table.owner, table.spender, table.chainId] }),
   }),
 );
 
 export const transferEvent = onchainTable(
   "transfer_event",
   (t) => ({
-    id: t.text().primaryKey(),
+    id: t.text(),
+    chainId: t.integer().notNull(),
     value: t.bigint().notNull(),
     timestamp: t.integer().notNull(),
-    from: t.hex(), // null for minting
-    to: t.hex(), // need to check why normal deposit has a 0x00 address transfer in between
+    from: t.hex(), 
+    to: t.hex(),
   }),
   (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
     fromIdx: index("from_index").on(table.from),
   }),
 );
@@ -85,105 +100,152 @@ export const transferEventRelations = relations(transferEvent, ({ one }) => ({
   }),
 }));
 
-export const approvalEvent = onchainTable("approval_event", (t) => ({
-  id: t.text().primaryKey(),
-  value: t.bigint().notNull(),
-  timestamp: t.integer().notNull(),
-  owner: t.hex().notNull(),
-  spender: t.hex().notNull(),
-}));
+export const approvalEvent = onchainTable(
+  "approval_event", 
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    value: t.bigint().notNull(),
+    timestamp: t.integer().notNull(),
+    owner: t.hex().notNull(),
+    spender: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const rebalanceEvent = onchainTable("rebalance_event", (t) => ({
-  id: t.text().primaryKey(),
-  strategy: t.hex().notNull(),
-  timestamp: t.integer().notNull(),
-  current_tick: t.integer().notNull(),
-  strategist: t.hex().notNull(),
-  ticks_burn: t.json().$type<{ tick: number; liquidity: bigint }[]>(),
-  ticks_mint: t.json().$type<{ tick: number; liquidity: bigint }[]>(),
-  asset_balance_after: t.bigint(),
-  counter_balance_after: t.bigint(),
+export const rebalanceEvent = onchainTable(
+  "rebalance_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    strategy: t.hex().notNull(),
+    timestamp: t.integer().notNull(),
+    current_tick: t.integer().notNull(),
+    strategist: t.hex().notNull(),
+    ticks_burn: t.json().$type<{ tick: number; liquidity: bigint }[]>(),
+    ticks_mint: t.json().$type<{ tick: number; liquidity: bigint }[]>(),
+    asset_balance_after: t.bigint(),
+    counter_balance_after: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-}));
+export const depositCapEvent = onchainTable(
+  "deposit_cap_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    strategy: t.hex().notNull(),
+    owner: t.hex().notNull(),
+    timestamp: t.integer().notNull(),
+    deposit_cap: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const depositCapEvent = onchainTable("deposit_cap_event", (t) => ({
-  id: t.text().primaryKey(),
-  strategy: t.hex().notNull(),
-  owner: t.hex().notNull(),
-  timestamp: t.integer().notNull(),
-  deposit_cap: t.bigint(),
-}));
+export const setOwnerEvents = onchainTable(
+  "set_owner_events",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    strategy: t.hex().notNull(),
+    caller: t.hex().notNull(),
+    owner: t.hex().notNull(),
+    approved: t.boolean().notNull(),
+    timestamp: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const setOwnerEvents = onchainTable("set_owner_events", (t) => ({
-  id: t.text().primaryKey(),
-  strategy: t.hex().notNull(),
-  caller: t.hex().notNull(),
-  owner: t.hex().notNull(),
-  approved: t.boolean().notNull(),
-  timestamp: t.integer().notNull(),
-}));
+export const depositEvent = onchainTable(
+  "deposit_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    strategy: t.hex().notNull(),
+    user: t.hex().notNull(),
+    amount: t.bigint(),
+    timestamp: t.integer().notNull(),
+    shares: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const depositEvent = onchainTable("deposit_event", (t) => ({
-  id: t.text().primaryKey(),
-  strategy: t.hex().notNull(),
-  user: t.hex().notNull(),
-  amount: t.bigint(),
-  timestamp: t.integer().notNull(),
-  shares: t.bigint(),
-}));
-
-export const redeemEvent = onchainTable("redeem_event", (t) => ({
-  id: t.text().primaryKey(),
-  strategy: t.hex().notNull(),
-  user: t.hex().notNull(),
-  amount: t.bigint(),
-  timestamp: t.integer().notNull(),
-  shares: t.bigint(),
-}));
-
-
-
-
-
-
+export const redeemEvent = onchainTable(
+  "redeem_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    strategy: t.hex().notNull(),
+    user: t.hex().notNull(),
+    amount: t.bigint(),
+    timestamp: t.integer().notNull(),
+    shares: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // option market
 
-
 // trader account
-export const trader_account = onchainTable("trader_account", (t) => ({
-  address: t.hex().primaryKey(),
-}));
-
+export const trader_account = onchainTable(
+  "trader_account", 
+  (t) => ({
+    address: t.hex(),
+    chainId: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.address, table.chainId] }),
+  }),
+);
 
 // token representing trader's position in the market
 export const erc721_token = onchainTable(
   "erc721_token", 
   (t) => ({
     id: t.bigint(),
+    chainId: t.integer().notNull(),
     market: t.hex().notNull(),
     owner: t.hex().notNull(),
     status: t.text().notNull(), // 'active', 'exercised', 'settled'
   }),
   (table) => ({
-    pk: primaryKey({ columns: [table.id, table.market] }),
+    pk: primaryKey({ columns: [table.id, table.market, table.chainId] }),
     ownerIdx: index("owner_index").on(table.owner),
     statusIdx: index("status_index").on(table.status)
-  })
+  }),
 );
 
-
 // option market from which trader can mint options. Each market supports multiple pools but they should have the same call and put assets.
-export const option_markets = onchainTable("option_markets", (t) => ({
-  address: t.hex().primaryKey(),
-  name: t.text(),
-  symbol: t.text(),
-  primePool: t.hex().notNull(),
-  optionPricing: t.hex().notNull(),
-  dpFee: t.hex().notNull(),
-  callAsset: t.hex().notNull(),
-  putAsset: t.hex().notNull(),
-}));
+export const option_markets = onchainTable(
+  "option_markets", 
+  (t) => ({
+    address: t.hex(),
+    chainId: t.integer().notNull(),
+    name: t.text(),
+    symbol: t.text(),
+    primePool: t.hex().notNull(),
+    optionPricing: t.hex().notNull(),
+    dpFee: t.hex().notNull(),
+    callAsset: t.hex().notNull(),
+    putAsset: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.address, table.chainId] }),
+  }),
+);
 
 // Junction table for many-to-many relationship between traders and options markets
 export const trader_market_position = onchainTable(
@@ -191,26 +253,21 @@ export const trader_market_position = onchainTable(
   (t) => ({
     trader: t.hex(),
     market: t.hex(),
+    chainId: t.integer().notNull(),
   }),
   (table) => ({
-    pk: primaryKey({ columns: [table.trader, table.market] }),
-  })
+    pk: primaryKey({ columns: [table.trader, table.market, table.chainId] }),
+  }),
 );
 
 // Update relations to use the junction table representing the many-to-many relationship between trader, positions and option markets
 export const trader_account_relations = relations(trader_account, ({ many }) => ({
-  positions: many(trader_market_position, {
-    fields: [trader_account.address],
-    references: [trader_market_position.trader],
-  }),
+  positions: many(trader_market_position),
 }));
 
 // Update relations to use the junction table representing the many-to-many relationship between trader, option markets and trader positions
 export const option_markets_relations = relations(option_markets, ({ many }) => ({
-  positions: many(trader_market_position, {
-    fields: [option_markets.address],
-    references: [trader_market_position.market],
-  }),
+  positions: many(trader_market_position),
 }));
 
 export const trader_market_position_relations = relations(trader_market_position, ({ one }) => ({
@@ -225,27 +282,40 @@ export const trader_market_position_relations = relations(trader_market_position
 }));
 
 // erc721 transfer event
-export const erc721TransferEvent = onchainTable("erc721TransferEvent", (t) => ({
-  id: t.text().primaryKey(),
-  timestamp: t.integer().notNull(),
-  from: t.hex().notNull(),
-  to: t.hex().notNull(),
-  token: t.bigint().notNull(),
-}));
-
+export const erc721TransferEvent = onchainTable(
+  "erc721TransferEvent", 
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    timestamp: t.integer().notNull(),
+    from: t.hex().notNull(),
+    to: t.hex().notNull(),
+    token: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // mint option event
-export const mintOptionEvent = onchainTable("mintOptionEvent", (t) => ({
-  id: t.text().primaryKey(),
-  timestamp: t.integer().notNull(),
-  user: t.hex().notNull(),
-  market: t.hex().notNull(),
-  optionId: t.bigint(),
-  isCall: t.boolean(),
-  premiumAmount: t.bigint(),
-  totalAssetWithdrawn: t.bigint(),
-  protocolFees: t.bigint(),
-}));
+export const mintOptionEvent = onchainTable(
+  "mintOptionEvent", 
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    timestamp: t.integer().notNull(),
+    user: t.hex().notNull(),
+    market: t.hex().notNull(),
+    optionId: t.bigint(),
+    isCall: t.boolean(),
+    premiumAmount: t.bigint(),
+    totalAssetWithdrawn: t.bigint(),
+    protocolFees: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // Add relations for mintOptionEvent
 export const mintOptionEventRelations = relations(mintOptionEvent, ({ one }) => ({
@@ -288,24 +358,38 @@ export const erc721_token_relations = relations(erc721_token, ({ one }) => ({
 }));
 
 // Exercise option event
-export const exerciseOptionEvent = onchainTable("exerciseOptionEvent", (t) => ({
-  id: t.text().primaryKey(),
-  timestamp: t.integer().notNull(),
-  user: t.hex().notNull(),
-  market: t.hex().notNull(),
-  optionId: t.bigint().notNull(),
-  totalProfit: t.bigint().notNull(),
-  totalAssetRelocked: t.bigint().notNull(),
-}));
+export const exerciseOptionEvent = onchainTable(
+  "exerciseOptionEvent",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    timestamp: t.integer().notNull(),
+    user: t.hex().notNull(),
+    market: t.hex().notNull(),
+    optionId: t.bigint().notNull(),
+    totalProfit: t.bigint().notNull(),
+    totalAssetRelocked: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // Settle option event
-export const settleOptionEvent = onchainTable("settleOptionEvent", (t) => ({
-  id: t.text().primaryKey(),
-  timestamp: t.integer().notNull(),
-  user: t.hex().notNull(),
-  market: t.hex().notNull(),
-  optionId: t.bigint().notNull(),
-}));
+export const settleOptionEvent = onchainTable(
+  "settleOptionEvent",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    timestamp: t.integer().notNull(),
+    user: t.hex().notNull(),
+    market: t.hex().notNull(),
+    optionId: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // Add relations for exerciseOptionEvent
 export const exerciseOptionEventRelations = relations(exerciseOptionEvent, ({ one }) => ({
@@ -333,51 +417,78 @@ export const settleOptionEventRelations = relations(settleOptionEvent, ({ one })
 
 // tvl and other stats section
 
-export const optionMarketTotals = onchainTable("option_market_totals", (t) => ({
-  timestamp: t.integer().notNull(),
-  market: t.hex().primaryKey(),
-  callAssetOutside: t.bigint(),
-  putAssetOutside: t.bigint(),
-  totalPremiumPaid: t.bigint(),
-  totalInterestVolume: t.bigint(),
-  totalUniqueTraders: t.bigint(),
-}));
+export const optionMarketTotals = onchainTable(
+  "option_market_totals",
+  (t) => ({
+    timestamp: t.integer().notNull(),
+    market: t.hex(),
+    chainId: t.integer().notNull(),
+    callAssetOutside: t.bigint(),
+    putAssetOutside: t.bigint(),
+    totalPremiumPaid: t.bigint(),
+    totalInterestVolume: t.bigint(),
+    totalUniqueTraders: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.market, table.chainId] }),
+  }),
+);
 
-export const liquidityHandlerTotals = onchainTable("liquidity_handler_totals", (t) => ({
-  timestamp: t.integer().notNull(),
-  liquidityHandler: t.hex().primaryKey(),
-  token0Inside: t.bigint(),
-  token1Inside: t.bigint(),
-  totalTransactionVolume: t.bigint(),
-  totalUniqueLPs: t.bigint(),
-}));
+export const liquidityHandlerTotals = onchainTable(
+  "liquidity_handler_totals",
+  (t) => ({
+    timestamp: t.integer().notNull(),
+    liquidityHandler: t.hex(),
+    chainId: t.integer().notNull(),
+    token0Inside: t.bigint(),
+    token1Inside: t.bigint(),
+    totalTransactionVolume: t.bigint(),
+    totalUniqueLPs: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
+  }),
+);
 
-export const liquidityHandlerActiveLiquidity = onchainTable("liquidity_handler_active_liquidity", (t) => ({
-  timestamp: t.integer().notNull(),
-  liquidityHandler: t.hex().primaryKey(),
-  pool: t.hex().notNull(),
-  tickLower: t.bigint(),
-  tickUpper: t.bigint(),
-  usedLiquidity: t.bigint(),
-  freeLiquidity: t.bigint(),
-}));
-
+export const liquidityHandlerActiveLiquidity = onchainTable(
+  "liquidity_handler_active_liquidity",
+  (t) => ({
+    timestamp: t.integer().notNull(),
+    liquidityHandler: t.hex(),
+    chainId: t.integer().notNull(),
+    pool: t.hex().notNull(),
+    tickLower: t.bigint(),
+    tickUpper: t.bigint(),
+    usedLiquidity: t.bigint(),
+    freeLiquidity: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
+  }),
+);
 
 // position manager
-
 
 // liquidity handler
 
 // LP accounts
-export const lp_account = onchainTable("lp_account", (t) => ({
-  address: t.hex().primaryKey(),
-}));
+export const lp_account = onchainTable(
+  "lp_account", 
+  (t) => ({
+    address: t.hex(),
+    chainId: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.address, table.chainId] }),
+  }),
+);
 
 // Core liquidity position tracking
 export const user_liquidity_position = onchainTable(
   "user_liquidity_position",
   (t) => ({
     token_id: t.bigint(),
+    chainId: t.integer().notNull(),
     handler_address: t.hex(),
     user_address: t.hex(),
     total_liquidity: t.bigint(),
@@ -387,99 +498,170 @@ export const user_liquidity_position = onchainTable(
     tick_upper: t.integer(),
   }),
   (table) => ({
-    pk: primaryKey({ columns: [table.token_id, table.handler_address] }),
+    pk: primaryKey({ columns: [table.token_id, table.handler_address, table.chainId] }),
   }),
 );
 
 // Handler configuration
-export const liquidity_handler = onchainTable("liquidity_handler", (t) => ({
-  address: t.hex().primaryKey(),
-  is_paused: t.boolean(),
-  global_hook_allowed: t.boolean(),
-  default_hook_allowed: t.boolean(),
-  premium_asset: t.hex(),
-}));
+export const liquidity_handler = onchainTable(
+  "liquidity_handler",
+  (t) => ({
+    address: t.hex(),
+    chainId: t.integer().notNull(),
+    is_paused: t.boolean(),
+    global_hook_allowed: t.boolean(),
+    default_hook_allowed: t.boolean(),
+    premium_asset: t.hex(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.address, table.chainId] }),
+  }),
+);
 
 // Position Manager Events
-export const mint_position_event = onchainTable("mint_position_event", (t) => ({
-  id: t.text().primaryKey(),
-  handler_address: t.hex(),
-  token_id: t.bigint(),
-  user_address: t.hex(),
-  liquidity_minted: t.bigint(),
-  pool: t.hex(),
-  hook: t.hex(),
-  tick_lower: t.integer(),
-  tick_upper: t.integer(),
-  timestamp: t.integer(),
-}));
+export const mint_position_event = onchainTable(
+  "mint_position_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    handler_address: t.hex(),
+    token_id: t.bigint(),
+    user_address: t.hex(),
+    liquidity_minted: t.bigint(),
+    pool: t.hex(),
+    hook: t.hex(),
+    tick_lower: t.integer(),
+    tick_upper: t.integer(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const burn_position_event = onchainTable("burn_position_event", (t) => ({
-  id: t.text().primaryKey(),
-  handler_address: t.hex(),
-  token_id: t.bigint(),
-  user_address: t.hex(),
-  liquidity_burned: t.bigint(),
-  pool: t.hex(),
-  hook: t.hex(),
-  tick_lower: t.integer(),
-  tick_upper: t.integer(),
-  timestamp: t.integer(),
-}));
+export const burn_position_event = onchainTable(
+  "burn_position_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    handler_address: t.hex(),
+    token_id: t.bigint(),
+    user_address: t.hex(),
+    liquidity_burned: t.bigint(),
+    pool: t.hex(),
+    hook: t.hex(),
+    tick_lower: t.integer(),
+    tick_upper: t.integer(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const use_position_event = onchainTable("use_position_event", (t) => ({
-  id: t.text().primaryKey(),
-  token_id: t.bigint(),
-  liquidity_used: t.bigint(),
-  timestamp: t.integer(),
-}));
+export const use_position_event = onchainTable(
+  "use_position_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    handler_address: t.hex(),
+    token_id: t.bigint(),
+    liquidity_used: t.bigint(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const unuse_position_event = onchainTable("unuse_position_event", (t) => ({
-  id: t.text().primaryKey(),
-  token_id: t.bigint(),
-  liquidity_unused: t.bigint(),
-  timestamp: t.integer(),
-}));
+export const unuse_position_event = onchainTable(
+  "unuse_position_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    token_id: t.bigint(),
+    liquidity_unused: t.bigint(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const donation_event = onchainTable("donation_event", (t) => ({
-  id: t.text().primaryKey(),
-  token_id: t.bigint(),
-  premium_amount_earned: t.bigint(),
-  timestamp: t.integer(),
-}));
+export const donation_event = onchainTable(
+  "donation_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    token_id: t.bigint(),
+    premium_amount_earned: t.bigint(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const premium_collection_event = onchainTable("premium_collection_event", (t) => ({
-  id: t.text().primaryKey(),
-  token_id: t.bigint(),
-  user_address: t.hex(),
-  amount: t.bigint(),
-  timestamp: t.integer(),
-}));
+export const premium_collection_event = onchainTable(
+  "premium_collection_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    token_id: t.bigint(),
+    user_address: t.hex(),
+    amount: t.bigint(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // Liquidity Handler Events
-export const hook_update_event = onchainTable("hook_update_event", (t) => ({
-  id: t.text().primaryKey(),
-  handler_address: t.hex(),
-  hook_address: t.hex(),
-  allowed: t.boolean(),
-  timestamp: t.integer(),
-}));
+export const hook_update_event = onchainTable(
+  "hook_update_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    handler_address: t.hex(),
+    hook_address: t.hex(),
+    allowed: t.boolean(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const global_hook_update_event = onchainTable("global_hook_update_event", (t) => ({
-  id: t.text().primaryKey(),
-  handler_address: t.hex(),
-  global_allowed: t.boolean(),
-  default_allowed: t.boolean(),
-  timestamp: t.integer(),
-}));
+export const global_hook_update_event = onchainTable(
+  "global_hook_update_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    handler_address: t.hex(),
+    global_allowed: t.boolean(),
+    default_allowed: t.boolean(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
-export const handler_pause_event = onchainTable("handler_pause_event", (t) => ({
-  id: t.text().primaryKey(),
-  handler_address: t.hex(),
-  is_paused: t.boolean(),
-  account: t.hex(),
-  timestamp: t.integer(),
-}));
+export const handler_pause_event = onchainTable(
+  "handler_pause_event",
+  (t) => ({
+    id: t.text(),
+    chainId: t.integer().notNull(),
+    handler_address: t.hex(),
+    is_paused: t.boolean(),
+    account: t.hex(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.id, table.chainId] }),
+  }),
+);
 
 // Relations
 export const user_liquidity_position_relations = relations(user_liquidity_position, ({ one }) => ({
