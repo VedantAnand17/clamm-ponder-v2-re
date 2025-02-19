@@ -32,10 +32,15 @@ import {
   global_hook_update_event,
   handler_pause_event,
   liquidity_handler,
+  internal_options,
 } from "ponder:schema";
 import { bigint, replaceBigInts } from "ponder";
 import { initialiseStrategyData } from "./hooks/initialiseStrategyData";
 import { getStrategyBalance } from "./hooks/getStrategyBalance";
+import { getOptionData } from "./hooks/getOptionData";
+import { OptionMarketABI } from "../abis/OptionMarketABI";
+import { PublicClient } from "viem";
+
 ponder.on("Automatorv21:Transfer", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
@@ -104,8 +109,12 @@ ponder.on("Automatorv21:Rebalance", async ({ event, context }) => {
     chainId 
   });
 
+  if (!strategy_data) {
+    throw new Error(`Strategy not found: ${event.log.address}`);
+  }
+
   const balancesAfter = await getStrategyBalance(
-    context.client,
+    context.client as PublicClient,
     event.log.address,
     { asset: strategy_data.asset, counter: strategy_data.counter },
     { blockNumber: event.block.number }
@@ -301,12 +310,11 @@ ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
       chainId,
       owner: event.args.to,
       market: event.log.address,
-      status: 'active'  // Default to active for new tokens
+      createdAt: Number(event.block.timestamp),
     })
-    .onConflictDoUpdate((row) => ({
+    .onConflictDoUpdate({
       owner: event.args.to,
-      market: event.log.address
-    }));
+    });
 
   await context.db.insert(erc721TransferEvent).values({
     id: event.log.id,
@@ -319,39 +327,77 @@ ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
 });
 
 ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
+  const { client, db } = context;
+  const user = event.args.user;
+  const tokenId = event.args.tokenId;
+  const isCall = event.args.isCall;
   const chainId = Number(context.network.chainId);
+  
+  // Get option data first
+  const opData = await client.readContract({
+    abi: OptionMarketABI,
+    address: event.log.address,
+    functionName: "opData",
+    args: [tokenId],
+  });
+
+  const opTickArrayLen = Number(opData[0]);
+
+  // Create erc721_token record with all fields properly set
+  await context.db
+    .insert(erc721_token)
+    .values({
+      id: BigInt(tokenId),
+      createdAt: Number(event.block.timestamp),
+      chainId,
+      market: event.log.address,
+      owner: user,
+      opTickArrayLen,
+      isCall,
+      expiry: Number(opData[3]),
+    }).onConflictDoNothing();
+
+  // Get option ticks data
+  const optionTicks = await getOptionData(
+    client as PublicClient,
+    event.log.address,
+    BigInt(tokenId),
+    opTickArrayLen
+  );
+
+  // Create internal_options records
+  await Promise.all(optionTicks.map((optionTick, i) => 
+    db.insert(internal_options).values({
+      handler: optionTick.handler,
+      pool: optionTick.pool,
+      optionMarket: event.log.address,
+      tokenId: BigInt(tokenId),
+      index: i,
+      chainId,
+      hook: optionTick.hook,
+      liquidityAtOpen: optionTick.liquidityToUse,
+      liquidityExercised: 0n,
+      liquiditySettled: 0n,
+      strike: optionTick.strike,
+    })
+  ));
 
   await context.db
     .insert(trader_account)
     .values({ 
-      address: event.args.user,
+      address: user,
       chainId 
     })
     .onConflictDoNothing();
-
-  await context.db
-    .insert(erc721_token)
-    .values({
-      id: event.args.tokenId,
-      chainId,
-      owner: event.args.user,
-      market: event.log.address,
-      status: 'active'
-    })
-    .onConflictDoUpdate((row) => ({
-      owner: event.args.user,
-      market: event.log.address,
-      status: 'active'
-    }));
 
   await context.db.insert(mintOptionEvent).values({
     id: event.log.id,
     chainId,
     market: event.log.address,
     timestamp: Number(event.block.timestamp),
-    user: event.args.user,
-    optionId: event.args.tokenId,
-    isCall: event.args.isCall,
+    user,
+    optionId: tokenId,
+    isCall,
     premiumAmount: event.args.premiumAmount,
     totalAssetWithdrawn: event.args.totalAssetWithdrawn,
     protocolFees: event.args.protocolFees,
@@ -360,7 +406,7 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
   await context.db
     .insert(trader_market_position)
     .values({
-      trader: event.args.user,
+      trader: user,
       market: event.log.address,
       chainId
     })
@@ -387,7 +433,38 @@ ponder.on("OptionMarket:LogOptionsMarketInitialized", async ({ event, context })
 });
 
 ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
+  const { client, db } = context;
   const chainId = Number(context.network.chainId);
+
+  // Get option data to know how many ticks to check
+  const opData = await client.readContract({
+    abi: OptionMarketABI,
+    address: event.log.address,
+    functionName: "opData",
+    args: [event.args.tokenId],
+  });
+
+  const opTickArrayLen = Number(opData[0]);
+
+  // Check each tick's liquidity
+  const optionTicks = await getOptionData(
+    client as PublicClient,
+    event.log.address,
+    event.args.tokenId,
+    opTickArrayLen
+  );
+
+  await Promise.all(optionTicks.map((optionTick, i) =>
+    db.update(internal_options, {
+      optionMarket: event.log.address,
+      tokenId: BigInt(event.args.tokenId),
+      index: i,
+      chainId
+    })
+    .set((row) => ({
+      liquidityExercised: row.liquidityExercised + (optionTick.liquidityToUse - row.liquidityAtOpen)
+    }))
+  ));
 
   await context.db
     .insert(trader_account)
@@ -407,23 +484,41 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
     totalProfit: event.args.totalProfit,
     totalAssetRelocked: event.args.totalAssetRelocked,
   });
-
-  await context.db
-    .insert(erc721_token)
-    .values({
-      id: event.args.tokenId,
-      chainId,
-      market: event.log.address,
-      owner: event.args.user,
-      status: 'exercised'
-    })
-    .onConflictDoUpdate((row) => ({
-      status: 'exercised'
-    }));
 });
 
 ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
+  const { client, db } = context;
   const chainId = Number(context.network.chainId);
+
+  // Get option data to know how many ticks to check
+  const opData = await client.readContract({
+    abi: OptionMarketABI,
+    address: event.log.address,
+    functionName: "opData",
+    args: [event.args.tokenId],
+  });
+
+  const opTickArrayLen = Number(opData[0]);
+
+  // Check each tick's liquidity
+  const optionTicks = await getOptionData(
+    client as PublicClient,
+    event.log.address,
+    event.args.tokenId,
+    opTickArrayLen
+  );
+
+  await Promise.all(optionTicks.map((optionTick, i) =>
+    db.update(internal_options, {
+      optionMarket: event.log.address,
+      tokenId: BigInt(event.args.tokenId),
+      index: i,
+      chainId
+    })
+    .set((row) => ({
+      liquiditySettled: row.liquiditySettled + (optionTick.liquidityToUse - row.liquidityAtOpen)
+    }))
+  ));
 
   await context.db
     .insert(trader_account)
@@ -441,19 +536,6 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
     user: event.args.user,
     optionId: event.args.tokenId,
   });
-
-  await context.db
-    .insert(erc721_token)
-    .values({
-      id: event.args.tokenId,
-      chainId,
-      market: event.log.address,
-      owner: event.args.user,
-      status: 'settled'
-    })
-    .onConflictDoUpdate((row) => ({
-      status: 'settled'
-    }));
 });
 
 

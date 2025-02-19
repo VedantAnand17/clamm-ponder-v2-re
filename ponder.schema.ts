@@ -216,15 +216,37 @@ export const erc721_token = onchainTable(
   "erc721_token", 
   (t) => ({
     id: t.bigint(),
-    chainId: t.integer().notNull(),
-    market: t.hex().notNull(),
-    owner: t.hex().notNull(),
-    status: t.text().notNull(), // 'active', 'exercised', 'settled'
+    createdAt: t.integer(),
+    chainId: t.integer(),
+    market: t.hex(),
+    owner: t.hex(),
+    opTickArrayLen: t.integer(),
+    isCall: t.boolean(),
+    expiry: t.integer(),
   }),
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.market, table.chainId] }),
     ownerIdx: index("owner_index").on(table.owner),
-    statusIdx: index("status_index").on(table.status)
+  }),
+);
+
+export const internal_options = onchainTable(
+  "internal_options", 
+  (t) => ({
+    handler: t.hex().notNull(),
+    pool: t.hex().notNull(),
+    optionMarket: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    index: t.integer().notNull(),
+    chainId: t.integer().notNull(),
+    hook: t.hex().notNull(),
+    liquidityAtOpen: t.bigint().notNull(),
+    liquidityExercised: t.bigint().notNull(),
+    liquiditySettled: t.bigint().notNull(),
+    strike: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.optionMarket, table.tokenId, table.chainId, table.index] }),
   }),
 );
 
@@ -317,6 +339,27 @@ export const mintOptionEvent = onchainTable(
   }),
 );
 
+// export const options = onchainTable(
+//   "options", 
+//   (t) => ({
+//     id: t.text(),
+//     chainId: t.integer().notNull(),
+//     timestamp: t.integer().notNull(),
+//     user: t.hex().notNull(),
+//     market: t.hex().notNull(),
+//     optionId: t.bigint(),
+//     isCall: t.boolean(),
+//     premiumAmount: t.bigint(),
+//     totalAssetWithdrawn: t.bigint(),
+//     protocolFees: t.bigint(),
+//   }),
+//   (table) => ({
+//     pk: primaryKey({ columns: [table.id, table.chainId] }),
+//   }),
+// );
+
+
+
 // Add relations for mintOptionEvent
 export const mintOptionEventRelations = relations(mintOptionEvent, ({ one }) => ({
   user_account: one(trader_account, {
@@ -354,6 +397,22 @@ export const erc721_token_relations = relations(erc721_token, ({ one }) => ({
   market: one(option_markets, {
     fields: [erc721_token.market],
     references: [option_markets.address],
+  }),
+}));
+
+// Update erc721_token_to_internal_options relation
+export const erc721_token_to_internal_options = relations(erc721_token, ({ many }) => ({
+  internal_options: many(internal_options, {
+    references: [internal_options.tokenId, internal_options.optionMarket, internal_options.chainId],
+    fields: [erc721_token.id, erc721_token.market, erc721_token.chainId],
+  }),
+}));
+
+// Update internal_options_to_token relation
+export const internal_options_to_token = relations(internal_options, ({ one }) => ({
+  token: one(erc721_token, {
+    references: [erc721_token.id, erc721_token.market, erc721_token.chainId],
+    fields: [internal_options.tokenId, internal_options.optionMarket, internal_options.chainId],
   }),
 }));
 
