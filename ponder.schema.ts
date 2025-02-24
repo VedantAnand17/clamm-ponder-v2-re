@@ -205,6 +205,7 @@ export const trader_account = onchainTable(
   (t) => ({
     address: t.hex(),
     chainId: t.integer().notNull(),
+    exerciseDelegate: t.boolean(),
   }),
   (table) => ({
     pk: primaryKey({ columns: [table.address, table.chainId] }),

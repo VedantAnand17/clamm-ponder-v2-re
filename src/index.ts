@@ -299,22 +299,17 @@ ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
     .insert(trader_account)
     .values({ 
       address: event.args.to,
-      chainId 
+      chainId,
     })
     .onConflictDoNothing();
 
   await context.db
-    .insert(erc721_token)
-    .values({
+    .update(erc721_token, {
       id: event.args.id,
-      chainId,
-      owner: event.args.to,
       market: event.log.address,
-      createdAt: Number(event.block.timestamp),
+      chainId: context.network.chainId
     })
-    .onConflictDoUpdate({
-      owner: event.args.to,
-    });
+    .set({ owner: event.args.to });
 
   await context.db.insert(erc721TransferEvent).values({
     id: event.log.id,
@@ -343,6 +338,7 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
 
   const opTickArrayLen = Number(opData[0]);
 
+
   // Create erc721_token record with all fields properly set
   await context.db
     .insert(erc721_token)
@@ -353,7 +349,7 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
       market: event.log.address,
       owner: user,
       opTickArrayLen,
-      isCall,
+      isCall: event.args.isCall,
       expiry: Number(opData[3]),
     }).onConflictDoNothing();
 
@@ -466,14 +462,6 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
     }))
   ));
 
-  await context.db
-    .insert(trader_account)
-    .values({ 
-      address: event.args.user,
-      chainId 
-    })
-    .onConflictDoNothing();
-
   await context.db.insert(exerciseOptionEvent).values({
     id: event.log.id,
     chainId,
@@ -519,14 +507,6 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
       liquiditySettled: row.liquiditySettled + (optionTick.liquidityToUse - row.liquidityAtOpen)
     }))
   ));
-
-  await context.db
-    .insert(trader_account)
-    .values({ 
-      address: event.args.user,
-      chainId 
-    })
-    .onConflictDoNothing();
 
   await context.db.insert(settleOptionEvent).values({
     id: event.log.id,
