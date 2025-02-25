@@ -46,11 +46,11 @@ ponder.on("Automatorv21:Transfer", async ({ event, context }) => {
 
   await context.db
     .insert(account)
-    .values({ 
-      address: event.args.from, 
+    .values({
+      address: event.args.from,
       chainId,
-      balance: 0n, 
-      isOwner: false 
+      balance: 0n,
+      isOwner: false,
     })
     .onConflictDoUpdate((row) => ({
       balance: row.balance - event.args.value,
@@ -58,11 +58,11 @@ ponder.on("Automatorv21:Transfer", async ({ event, context }) => {
 
   await context.db
     .insert(account)
-    .values({ 
-      address: event.args.to, 
+    .values({
+      address: event.args.to,
       chainId,
-      balance: 0n, 
-      isOwner: false 
+      balance: 0n,
+      isOwner: false,
     })
     .onConflictDoUpdate((row) => ({
       balance: row.balance + event.args.value,
@@ -103,10 +103,10 @@ ponder.on("Automatorv21:Approval", async ({ event, context }) => {
 
 ponder.on("Automatorv21:Rebalance", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
-  
-  const strategy_data = await context.db.find(strategy, { 
+
+  const strategy_data = await context.db.find(strategy, {
     address: event.log.address,
-    chainId 
+    chainId,
   });
 
   if (!strategy_data) {
@@ -119,7 +119,7 @@ ponder.on("Automatorv21:Rebalance", async ({ event, context }) => {
     { asset: strategy_data.asset, counter: strategy_data.counter },
     { blockNumber: event.block.number }
   );
-  
+
   await context.db.insert(rebalanceEvent).values({
     id: event.log.id,
     chainId,
@@ -134,42 +134,39 @@ ponder.on("Automatorv21:Rebalance", async ({ event, context }) => {
   });
 });
 
-
 ponder.on("Automatorv21:DepositCapSet", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
-  await context.db
-    .insert(depositCapEvent)
-    .values({
-      id: event.log.id,
-      chainId,
-      strategy: event.log.address,
-      timestamp: Number(event.block.timestamp),
-      owner: event.transaction.from,
-      deposit_cap: event.args.depositCap,
-    });
+  await context.db.insert(depositCapEvent).values({
+    id: event.log.id,
+    chainId,
+    strategy: event.log.address,
+    timestamp: Number(event.block.timestamp),
+    owner: event.transaction.from,
+    deposit_cap: event.args.depositCap,
+  });
 
   await context.db
     .insert(owner)
-    .values({ 
+    .values({
       address: event.transaction.from,
-      chainId 
+      chainId,
     })
     .onConflictDoUpdate({ address: event.transaction.from });
 
   const strategyData = await initialiseStrategyData(
-    context.client,
+    context.client as PublicClient,
     event.log.address,
     context.contracts.Automatorv21.abi
   );
 
   await context.db
     .insert(strategy)
-    .values({ 
+    .values({
       address: event.log.address,
       chainId,
       owner: event.transaction.from,
-      ...strategyData
+      ...strategyData,
     })
     .onConflictDoUpdate({ owner: event.transaction.from });
 });
@@ -177,22 +174,20 @@ ponder.on("Automatorv21:DepositCapSet", async ({ event, context }) => {
 ponder.on("Automatorv21:SetDepositCap", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
-  await context.db
-    .insert(depositCapEvent)
-    .values({
-      id: event.log.id,
-      chainId,
-      strategy: event.log.address,
-      timestamp: Number(event.block.timestamp),
-      owner: event.transaction.from,
-      deposit_cap: event.args.depositCap,
-    });
+  await context.db.insert(depositCapEvent).values({
+    id: event.log.id,
+    chainId,
+    strategy: event.log.address,
+    timestamp: Number(event.block.timestamp),
+    owner: event.transaction.from,
+    deposit_cap: event.args.depositCap,
+  });
 
   await context.db
     .insert(owner)
-    .values({ 
+    .values({
       address: event.transaction.from,
-      chainId 
+      chainId,
     })
     .onConflictDoUpdate((row) => ({
       address: event.transaction.from,
@@ -200,10 +195,10 @@ ponder.on("Automatorv21:SetDepositCap", async ({ event, context }) => {
 
   await context.db
     .insert(strategy)
-    .values({ 
+    .values({
       address: event.log.address,
       chainId,
-      owner: event.transaction.from
+      owner: event.transaction.from,
     })
     .onConflictDoUpdate((row) => ({
       owner: event.transaction.from,
@@ -213,24 +208,22 @@ ponder.on("Automatorv21:SetDepositCap", async ({ event, context }) => {
 ponder.on("Automatorv21:SetOwner", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
-  await context.db
-    .insert(setOwnerEvents)
-    .values({
-      id: event.log.id,
-      chainId,
-      strategy: event.log.address,
-      caller: event.transaction.from,
-      owner: event.args.user,
-      approved: event.args.approved,
-      timestamp: Number(event.block.timestamp),
-    });
+  await context.db.insert(setOwnerEvents).values({
+    id: event.log.id,
+    chainId,
+    strategy: event.log.address,
+    caller: event.transaction.from,
+    owner: event.args.user,
+    approved: event.args.approved,
+    timestamp: Number(event.block.timestamp),
+  });
 
   if (event.args.approved) {
     await context.db
       .insert(owner)
-      .values({ 
+      .values({
         address: event.args.user,
-        chainId 
+        chainId,
       })
       .onConflictDoUpdate((row) => ({
         address: event.args.user,
@@ -238,10 +231,10 @@ ponder.on("Automatorv21:SetOwner", async ({ event, context }) => {
 
     await context.db
       .insert(strategy)
-      .values({ 
+      .values({
         address: event.log.address,
         chainId,
-        owner: event.args.user
+        owner: event.args.user,
       })
       .onConflictDoUpdate((row) => ({
         owner: event.args.user,
@@ -252,35 +245,30 @@ ponder.on("Automatorv21:SetOwner", async ({ event, context }) => {
 ponder.on("Automatorv21:Deposit", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
-  await context.db
-    .insert(depositEvent)
-    .values({
-      id: event.log.id,
-      chainId,
-      strategy: event.log.address,
-      user: event.args.sender,
-      amount: event.args.assets,
-      shares: event.args.sharesMinted,
-      timestamp: Number(event.block.timestamp),
-    });
+  await context.db.insert(depositEvent).values({
+    id: event.log.id,
+    chainId,
+    strategy: event.log.address,
+    user: event.args.sender,
+    amount: event.args.assets,
+    shares: event.args.sharesMinted,
+    timestamp: Number(event.block.timestamp),
+  });
 });
 
 ponder.on("Automatorv21:Redeem", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
-  await context.db
-    .insert(redeemEvent)
-    .values({
-      id: event.log.id,
-      chainId,
-      strategy: event.log.address,
-      user: event.args.sender,
-      amount: event.args.assetsWithdrawn,
-      shares: event.args.shares,
-      timestamp: Number(event.block.timestamp),
-    });
+  await context.db.insert(redeemEvent).values({
+    id: event.log.id,
+    chainId,
+    strategy: event.log.address,
+    user: event.args.sender,
+    amount: event.args.assetsWithdrawn,
+    shares: event.args.shares,
+    timestamp: Number(event.block.timestamp),
+  });
 });
-
 
 // option market
 
@@ -289,27 +277,70 @@ ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
 
   await context.db
     .insert(trader_account)
-    .values({ 
+    .values({
       address: event.args.from,
-      chainId 
-    })
-    .onConflictDoNothing();
-  
-  await context.db
-    .insert(trader_account)
-    .values({ 
-      address: event.args.to,
       chainId,
     })
     .onConflictDoNothing();
 
   await context.db
-    .update(erc721_token, {
-      id: event.args.id,
-      market: event.log.address,
-      chainId: context.network.chainId
+    .insert(trader_account)
+    .values({
+      address: event.args.to,
+      chainId,
     })
-    .set({ owner: event.args.to });
+    .onConflictDoNothing();
+
+  // Check if this is a mint (transfer from zero address)
+  const isFirstTransfer =
+    event.args.from === "0x0000000000000000000000000000000000000000";
+
+  if (isFirstTransfer) {
+    // For mints, create the token record if it doesn't exist
+    await context.db
+      .insert(erc721_token)
+      .values({
+        id: event.args.id,
+        createdAt: Number(event.block.timestamp),
+        chainId,
+        market: event.log.address,
+        owner: event.args.to,
+        // Set default values for other required fields
+        opTickArrayLen: 0, // Will be updated by LogMintOption event
+        isCall: false, // Will be updated by LogMintOption event
+        expiry: 0, // Will be updated by LogMintOption event
+      })
+      .onConflictDoNothing();
+  } else {
+    // For regular transfers, update the existing record
+    try {
+      await context.db
+        .update(erc721_token, {
+          id: event.args.id,
+          market: event.log.address,
+          chainId: context.network.chainId,
+        })
+        .set({ owner: event.args.to });
+    } catch (error) {
+      console.error(`Error updating token ${event.args.id} ownership:`, error);
+
+      // If update fails, try to create the record
+      await context.db
+        .insert(erc721_token)
+        .values({
+          id: event.args.id,
+          createdAt: Number(event.block.timestamp),
+          chainId,
+          market: event.log.address,
+          owner: event.args.to,
+          // Set default values for other required fields
+          opTickArrayLen: 0,
+          isCall: false,
+          expiry: 0,
+        })
+        .onConflictDoNothing();
+    }
+  }
 
   await context.db.insert(erc721TransferEvent).values({
     id: event.log.id,
@@ -327,7 +358,7 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
   const tokenId = event.args.tokenId;
   const isCall = event.args.isCall;
   const chainId = Number(context.network.chainId);
-  
+
   // Get option data first
   const opData = await client.readContract({
     abi: OptionMarketABI,
@@ -337,7 +368,6 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
   });
 
   const opTickArrayLen = Number(opData[0]);
-
 
   // Create erc721_token record with all fields properly set
   await context.db
@@ -351,7 +381,21 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
       opTickArrayLen,
       isCall: event.args.isCall,
       expiry: Number(opData[3]),
-    }).onConflictDoNothing();
+    })
+    .onConflictDoNothing();
+
+  await context.db
+    .update(erc721_token, {
+      id: BigInt(tokenId),
+      market: event.log.address,
+      chainId: context.network.chainId,
+    })
+    .set({
+      owner: user,
+      opTickArrayLen: Number(opData[0]),
+      isCall: event.args.isCall,
+      expiry: Number(opData[3]),
+    });
 
   // Get option ticks data
   const optionTicks = await getOptionData(
@@ -362,27 +406,32 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
   );
 
   // Create internal_options records
-  await Promise.all(optionTicks.map((optionTick, i) => 
-    db.insert(internal_options).values({
-      handler: optionTick.handler,
-      pool: optionTick.pool,
-      optionMarket: event.log.address,
-      tokenId: BigInt(tokenId),
-      index: i,
-      chainId,
-      hook: optionTick.hook,
-      liquidityAtOpen: optionTick.liquidityToUse,
-      liquidityExercised: 0n,
-      liquiditySettled: 0n,
-      strike: optionTick.strike,
-    })
-  ));
+  await Promise.all(
+    optionTicks.map((optionTick, i) =>
+      db.insert(internal_options).values({
+        handler: optionTick.handler,
+        pool: optionTick.pool,
+        optionMarket: event.log.address,
+        tokenId: BigInt(tokenId),
+        index: i,
+        chainId,
+        hook: optionTick.hook,
+        liquidityAtOpen: optionTick.liquidityToUse,
+        liquidityAtLive: optionTick.liquidityToUse,
+        liquidityExercised: 0n,
+        liquiditySettled: 0n,
+        tickLower: optionTick.tickLower,
+        tickUpper: optionTick.tickUpper,
+        strike: optionTick.strike,
+      })
+    )
+  );
 
   await context.db
     .insert(trader_account)
-    .values({ 
+    .values({
       address: user,
-      chainId 
+      chainId,
     })
     .onConflictDoNothing();
 
@@ -404,29 +453,35 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
     .values({
       trader: user,
       market: event.log.address,
-      chainId
+      chainId,
     })
     .onConflictDoNothing();
 });
 
-ponder.on("OptionMarket:LogOptionsMarketInitialized", async ({ event, context }) => {
-  const chainId = Number(context.network.chainId);
+ponder.on(
+  "OptionMarket:LogOptionsMarketInitialized",
+  async ({ event, context }) => {
+    const chainId = Number(context.network.chainId);
 
-  try {
-    await context.db.insert(option_markets).values({
-      address: event.log.address,
-      chainId,
-      primePool: event.args.primePool,
-      optionPricing: event.args.optionPricing,
-      dpFee: event.args.dpFee,
-      callAsset: event.args.callAsset,
-      putAsset: event.args.putAsset,
-    });
-  } catch (error) {
-    console.error("Error processing LogOptionsMarketInitialized event:", error);
-    throw error;
+    try {
+      await context.db.insert(option_markets).values({
+        address: event.log.address,
+        chainId,
+        primePool: event.args.primePool,
+        optionPricing: event.args.optionPricing,
+        dpFee: event.args.dpFee,
+        callAsset: event.args.callAsset,
+        putAsset: event.args.putAsset,
+      });
+    } catch (error) {
+      console.error(
+        "Error processing LogOptionsMarketInitialized event:",
+        error
+      );
+      throw error;
+    }
   }
-});
+);
 
 ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
   const { client, db } = context;
@@ -450,17 +505,23 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
     opTickArrayLen
   );
 
-  await Promise.all(optionTicks.map((optionTick, i) =>
-    db.update(internal_options, {
-      optionMarket: event.log.address,
-      tokenId: BigInt(event.args.tokenId),
-      index: i,
-      chainId
-    })
-    .set((row) => ({
-      liquidityExercised: row.liquidityExercised + (optionTick.liquidityToUse - row.liquidityAtOpen)
-    }))
-  ));
+  await Promise.all(
+    optionTicks.map((optionTick, i) =>
+      db
+        .update(internal_options, {
+          optionMarket: event.log.address,
+          tokenId: BigInt(event.args.tokenId),
+          index: i,
+          chainId,
+        })
+        .set((row) => ({
+          liquidityExercised:
+            row.liquidityExercised +
+            (row.liquidityAtLive - optionTick.liquidityToUse),
+          liquidityAtLive: optionTick.liquidityToUse,
+        }))
+    )
+  );
 
   await context.db.insert(exerciseOptionEvent).values({
     id: event.log.id,
@@ -496,17 +557,23 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
     opTickArrayLen
   );
 
-  await Promise.all(optionTicks.map((optionTick, i) =>
-    db.update(internal_options, {
-      optionMarket: event.log.address,
-      tokenId: BigInt(event.args.tokenId),
-      index: i,
-      chainId
-    })
-    .set((row) => ({
-      liquiditySettled: row.liquiditySettled + (optionTick.liquidityToUse - row.liquidityAtOpen)
-    }))
-  ));
+  await Promise.all(
+    optionTicks.map((optionTick, i) =>
+      db
+        .update(internal_options, {
+          optionMarket: event.log.address,
+          tokenId: BigInt(event.args.tokenId),
+          index: i,
+          chainId,
+        })
+        .set((row) => ({
+          liquiditySettled:
+            row.liquiditySettled +
+            (row.liquidityAtLive - optionTick.liquidityToUse),
+          liquidityAtLive: optionTick.liquidityToUse,
+        }))
+    )
+  );
 
   await context.db.insert(settleOptionEvent).values({
     id: event.log.id,
@@ -518,7 +585,6 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
   });
 });
 
-
 // liquidity handler & position manager
 
 ponder.on("LiquidityHandler:LogMintedPosition", async ({ event, context }) => {
@@ -526,9 +592,9 @@ ponder.on("LiquidityHandler:LogMintedPosition", async ({ event, context }) => {
 
   await context.db
     .insert(lp_account)
-    .values({ 
+    .values({
       address: event.args.user,
-      chainId 
+      chainId,
     })
     .onConflictDoNothing();
 
@@ -657,19 +723,22 @@ ponder.on("LiquidityHandler:LogDonation", async ({ event, context }) => {
   });
 });
 
-ponder.on("LiquidityHandler:LogPremiumCollected", async ({ event, context }) => {
-  const chainId = Number(context.network.chainId);
+ponder.on(
+  "LiquidityHandler:LogPremiumCollected",
+  async ({ event, context }) => {
+    const chainId = Number(context.network.chainId);
 
-  await context.db.insert(premium_collection_event).values({
-    id: event.log.id,
-    chainId,
-    handler_address: event.log.address,
-    token_id: event.args.tokenId,
-    user_address: event.args.user,
-    amount: event.args.amount,
-    timestamp: Number(event.block.timestamp),
-  });
-});
+    await context.db.insert(premium_collection_event).values({
+      id: event.log.id,
+      chainId,
+      handler_address: event.log.address,
+      token_id: event.args.tokenId,
+      user_address: event.args.user,
+      amount: event.args.amount,
+      timestamp: Number(event.block.timestamp),
+    });
+  }
+);
 
 ponder.on("LiquidityHandler:LogUpdateHookUse", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
@@ -684,31 +753,34 @@ ponder.on("LiquidityHandler:LogUpdateHookUse", async ({ event, context }) => {
   });
 });
 
-ponder.on("LiquidityHandler:LogUpdateGlobalHookUse", async ({ event, context }) => {
-  const chainId = Number(context.network.chainId);
+ponder.on(
+  "LiquidityHandler:LogUpdateGlobalHookUse",
+  async ({ event, context }) => {
+    const chainId = Number(context.network.chainId);
 
-  await context.db.insert(global_hook_update_event).values({
-    id: event.log.id,
-    chainId,
-    handler_address: event.log.address,
-    global_allowed: event.args.globalAllowed,
-    default_allowed: event.args.defaultAllowed,
-    timestamp: Number(event.block.timestamp),
-  });
-
-  await context.db
-    .insert(liquidity_handler)
-    .values({
-      address: event.log.address,
+    await context.db.insert(global_hook_update_event).values({
+      id: event.log.id,
       chainId,
-      global_hook_allowed: event.args.globalAllowed,
-      default_hook_allowed: event.args.defaultAllowed,
-    })
-    .onConflictDoUpdate((row) => ({
-      global_hook_allowed: event.args.globalAllowed,
-      default_hook_allowed: event.args.defaultAllowed,
-    }));
-});
+      handler_address: event.log.address,
+      global_allowed: event.args.globalAllowed,
+      default_allowed: event.args.defaultAllowed,
+      timestamp: Number(event.block.timestamp),
+    });
+
+    await context.db
+      .insert(liquidity_handler)
+      .values({
+        address: event.log.address,
+        chainId,
+        global_hook_allowed: event.args.globalAllowed,
+        default_hook_allowed: event.args.defaultAllowed,
+      })
+      .onConflictDoUpdate((row) => ({
+        global_hook_allowed: event.args.globalAllowed,
+        default_hook_allowed: event.args.defaultAllowed,
+      }));
+  }
+);
 
 ponder.on("LiquidityHandler:Paused", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
