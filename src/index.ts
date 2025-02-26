@@ -33,12 +33,14 @@ import {
   handler_pause_event,
   liquidity_handler,
   internal_options,
+  primePool,
 } from "ponder:schema";
 import { bigint, replaceBigInts } from "ponder";
 import { initialiseStrategyData } from "./hooks/initialiseStrategyData";
 import { getStrategyBalance } from "./hooks/getStrategyBalance";
 import { getOptionData } from "./hooks/getOptionData";
 import { OptionMarketABI } from "../abis/OptionMarketABI";
+import { UniswapV3PoolABI } from "../abis/UniswapV3PoolABI";
 import { PublicClient } from "viem";
 
 ponder.on("Automatorv21:Transfer", async ({ event, context }) => {
@@ -458,31 +460,6 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on(
-  "OptionMarket:LogOptionsMarketInitialized",
-  async ({ event, context }) => {
-    const chainId = Number(context.network.chainId);
-
-    try {
-      await context.db.insert(option_markets).values({
-        address: event.log.address,
-        chainId,
-        primePool: event.args.primePool,
-        optionPricing: event.args.optionPricing,
-        dpFee: event.args.dpFee,
-        callAsset: event.args.callAsset,
-        putAsset: event.args.putAsset,
-      });
-    } catch (error) {
-      console.error(
-        "Error processing LogOptionsMarketInitialized event:",
-        error
-      );
-      throw error;
-    }
-  }
-);
-
 ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
   const { client, db } = context;
   const chainId = Number(context.network.chainId);
@@ -534,6 +511,66 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
     totalAssetRelocked: event.args.totalAssetRelocked,
   });
 });
+
+ponder.on(
+  "OptionMarket:LogOptionsMarketInitialized",
+  async ({ event, context }) => {
+    const chainId = Number(context.network.chainId);
+
+    const [token0, token1, fee, tickSpacing] = await context.client.multicall({
+      contracts: [
+        {
+          abi: UniswapV3PoolABI,
+          address: event.args.primePool,
+          functionName: "token0",
+        },
+        {
+          abi: UniswapV3PoolABI,
+          address: event.args.primePool,
+          functionName: "token1",
+        },
+        {
+          abi: UniswapV3PoolABI,
+          address: event.args.primePool,
+          functionName: "fee",
+        },
+        {
+          abi: UniswapV3PoolABI,
+          address: event.args.primePool,
+          functionName: "tickSpacing",
+        },
+      ],
+    });
+
+    await context.db.insert(primePool).values({
+      chainId,
+      primePool: event.args.primePool,
+      token0: token0.result,
+      token1: token1.result,
+      fee: fee.result,
+      tickSpacing: tickSpacing.result,
+      optionMarket: event.log.address,
+    });
+
+    try {
+      await context.db.insert(option_markets).values({
+        address: event.log.address,
+        chainId,
+        primePool: event.args.primePool,
+        optionPricing: event.args.optionPricing,
+        dpFee: event.args.dpFee,
+        callAsset: event.args.callAsset,
+        putAsset: event.args.putAsset,
+      });
+    } catch (error) {
+      console.error(
+        "Error processing LogOptionsMarketInitialized event:",
+        error
+      );
+      throw error;
+    }
+  }
+);
 
 ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
   const { client, db } = context;

@@ -1,5 +1,5 @@
-import { createConfig, mergeAbis } from "ponder";
-import { http } from "viem";
+import { createConfig, mergeAbis, factory } from "ponder";
+import { http, parseAbiItem } from "viem";
 import { Automatorv21ABI } from "./abis/Automatorv21ABI";
 import { Automatorv11ABI } from "./abis/Automatorv11ABI";
 import { UniswapV3PoolABI } from "./abis/UniswapV3PoolABI";
@@ -7,8 +7,10 @@ import { erc20ABI } from "./abis/erc20ABI";
 import { OptionMarketABI } from "./abis/OptionMarketABI";
 import { PositionManagerABI } from "./abis/PositionManagerABI";
 import { LiquidityHandlerABI } from "./abis/LiquidityHandlerABI";
+import { OptionPricingV2ABI } from "./abis/OptionPricingV2ABI";
 
 export default createConfig({
+  ordering: "multichain",
   networks: {
     arbitrum: {
       chainId: 42161,
@@ -21,11 +23,21 @@ export default createConfig({
       maxRequestsPerSecond: 300,
     },
   },
+  blocks: {
+    Automator01APY: {
+      network: "arbitrum",
+      startBlock: 26497566,
+      interval: 10000,
+    },
+  },
   contracts: {
     Automatorv21: {
       network: {
         arbitrum: {
-          address: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C","0x01E371c500C49beA2fa985334f46A8Dc906253Ea"],
+          address: [
+            "0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C",
+            "0x01E371c500C49beA2fa985334f46A8Dc906253Ea",
+          ],
           startBlock: 188249317,
           endBlock: 213059866,
         },
@@ -39,7 +51,10 @@ export default createConfig({
     OptionMarket: {
       network: {
         arbitrum: {
-          address: ["0xcD697B919AA000378fe429b47eb0fF0D17d3D435", "0x502751c59fEb16959526f1f8aa767D84b028bFbD"],
+          address: [
+            "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+            "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          ],
           startBlock: 297859265,
         },
         tenderly: {
@@ -48,7 +63,6 @@ export default createConfig({
         },
       },
       abi: OptionMarketABI,
-      
     },
     PositionManager: {
       network: {
@@ -56,10 +70,8 @@ export default createConfig({
           address: ["0xcb5082706331928a7825F898A78d8bcCdfE81FB4"],
           startBlock: 26497566,
         },
-        
       },
       abi: PositionManagerABI,
-      
     },
     LiquidityHandler: {
       network: {
@@ -67,14 +79,62 @@ export default createConfig({
           address: ["0x1953EF3f1ec5fB63576B7f8fdE0Ed3433D1D2a97"],
           startBlock: 26497566,
         },
-        
       },
       abi: LiquidityHandlerABI,
-      
     },
-    UniswapV3Pool: {
-      network: "arbitrum",
+    primePool: {
       abi: UniswapV3PoolABI,
+      network: {
+        arbitrum: {
+          address: [
+            "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+            "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          ],
+          startBlock: 297859265,
+        },
+        tenderly: {
+          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
+          startBlock: 26497566,
+        },
+      },
+      address: factory({
+        address: [
+          "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+          "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          "0x0DF5faE5a2F67011B8079B31D17c490618aF853e",
+        ],
+        event: parseAbiItem(
+          "event LogOptionsMarketInitialized(address _primePool, address _optionPricing, address _dpFee, address _callAsset, address _putAsset)"
+        ),
+        parameter: "_primePool",
+      }),
+    },
+    optionPricing: {
+      abi: OptionPricingV2ABI,
+      network: {
+        arbitrum: {
+          address: [
+            "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+            "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          ],
+          startBlock: 297859265,
+        },
+        tenderly: {
+          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
+          startBlock: 26497566,
+        },
+      },
+      address: factory({
+        address: [
+          "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+          "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          "0x0DF5faE5a2F67011B8079B31D17c490618aF853e",
+        ],
+        event: parseAbiItem(
+          "event LogOptionsMarketInitialized(address _primePool, address _optionPricing, address _dpFee, address _callAsset, address _putAsset)"
+        ),
+        parameter: "_optionPricing",
+      }),
     },
     ERC20: {
       network: "arbitrum",

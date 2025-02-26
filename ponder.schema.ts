@@ -793,3 +793,75 @@ export const user_liquidity_position_relations = relations(
     }),
   })
 );
+
+// ancillary contracts
+
+export const primePool = onchainTable(
+  "primePool",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    primePool: t.hex().notNull(),
+    token0: t.hex(),
+    token1: t.hex(),
+    fee: t.integer(),
+    tickSpacing: t.integer(),
+    optionMarket: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.primePool, table.chainId, table.optionMarket],
+    }),
+  })
+);
+
+export const primePoolToOptionMarketRelation = relations(
+  primePool,
+  ({ one }) => ({
+    optionMarket: one(option_markets, {
+      fields: [primePool.optionMarket],
+      references: [option_markets.address],
+    }),
+  })
+);
+
+export const optionMarketToPrimePoolRelation = relations(
+  option_markets,
+  ({ one }) => ({
+    primePool: one(primePool, {
+      fields: [option_markets.primePool],
+      references: [primePool.primePool],
+    }),
+  })
+);
+
+export const optionPricing = onchainTable(
+  "optionPricing",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    optionPricing: t.hex().notNull(),
+    ttlIV: t.json().$type<{ ttl: number; IV: bigint }[]>(),
+    minPercentage: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.optionPricing, table.chainId],
+    }),
+  })
+);
+
+// APY calculations for Automator
+
+export const automatorAPY = onchainTable(
+  "automatorAPY",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    automator: t.hex().notNull(),
+    timestamp: t.integer(),
+    currentAssets: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.automator, table.chainId],
+    }),
+  })
+);
