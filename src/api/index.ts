@@ -3,6 +3,7 @@ import schema from "ponder:schema";
 import { Hono } from "hono";
 import { client, graphql, eq, and, lt, gt } from "ponder";
 import { getAddress } from "viem";
+import { getSpecificStrategy, getAllStrategies } from "../../strategies";
 
 const app = new Hono();
 
@@ -269,5 +270,237 @@ app.get("/expired-options", async (c) => {
 
   return c.json({ options: filteredGroupedOptions });
 });
+
+app.get("/get-strategy", async (c) => {
+  const chainId = c.req.query("chainId")
+    ? parseInt(c.req.query("chainId"))
+    : undefined;
+  const address = c.req.query("address") as string | undefined;
+
+  // Select fields for strategy queries
+  const strategyFields = {
+    address: schema.strategy.address,
+    chainId: schema.strategy.chainId,
+    strategist: schema.strategy.strategist,
+    owner: schema.strategy.owner,
+    pool: schema.strategy.pool,
+    router: schema.strategy.router,
+    pool_tick_spacing: schema.strategy.pool_tick_spacing,
+    balancer_vault: schema.strategy.balancer_vault,
+    asset: schema.strategy.asset,
+    counter: schema.strategy.counter,
+    deposit_fee_pips: schema.strategy.deposit_fee_pips,
+    position_manager: schema.strategy.position_manager,
+    liquidity_handler: schema.strategy.liquidity_handler,
+  };
+
+  // Case 1: Specific strategy by chainId and/or address
+  if (chainId || address) {
+    // Get strategy from strategies.ts
+    const strategyConfig = getSpecificStrategy(chainId, address);
+
+    // If strategy doesn't exist in strategies.ts, return 404
+    if (!strategyConfig) {
+      return c.json({ error: "Strategy not found in configuration" }, 404);
+    }
+
+    // Build database query based on provided parameters
+    let dbQuery = db.select(strategyFields).from(schema.strategy);
+
+    if (chainId && address) {
+      dbQuery = dbQuery.where(
+        and(
+          eq(schema.strategy.chainId, chainId),
+          eq(schema.strategy.address, address)
+        )
+      );
+    } else if (chainId) {
+      dbQuery = dbQuery.where(eq(schema.strategy.chainId, chainId));
+    } else if (address) {
+      dbQuery = dbQuery.where(eq(schema.strategy.address, address));
+    }
+
+    const dbStrategies = await dbQuery;
+
+    // If no matching strategies in database, return 404
+    if (dbStrategies.length === 0) {
+      return c.json(
+        { error: "Strategy exists in configuration but not in database" },
+        404
+      );
+    }
+
+    // Convert BigInt values to strings in the database results
+    const serializedDbStrategies = dbStrategies.map((strategy) => ({
+      ...strategy,
+      pool_tick_spacing: strategy.pool_tick_spacing?.toString(),
+      deposit_fee_pips: strategy.deposit_fee_pips?.toString(),
+    }));
+
+    // If we have a specific strategy (both chainId and address), return it directly
+    if (chainId && address && serializedDbStrategies.length === 1) {
+      return c.json({
+        config: strategyConfig,
+        onchainData: serializedDbStrategies[0],
+      });
+    }
+
+    // Otherwise, return all matching strategies
+    return c.json({
+      strategies: serializedDbStrategies.map((dbStrategy) => ({
+        config: strategyConfig,
+        onchainData: dbStrategy,
+      })),
+    });
+  }
+
+  // Case 2: Get all strategies
+  const allStrategyConfigs = getAllStrategies();
+
+  // Get all strategies from database
+  const dbStrategies = await db.select(strategyFields).from(schema.strategy);
+
+  // Convert BigInt values to strings
+  const serializedDbStrategies = dbStrategies.map((strategy) => ({
+    ...strategy,
+    pool_tick_spacing: strategy.pool_tick_spacing?.toString(),
+    deposit_fee_pips: strategy.deposit_fee_pips?.toString(),
+  }));
+
+  // Create a map of database strategies by chainId and address
+  const dbStrategyMap: Record<number, Record<string, any>> = {};
+
+  for (const strategy of serializedDbStrategies) {
+    if (!dbStrategyMap[strategy.chainId]) {
+      dbStrategyMap[strategy.chainId] = {};
+    }
+    dbStrategyMap[strategy.chainId][strategy.address] = strategy;
+  }
+
+  // Combine strategy configs with database data, only including strategies that exist in both
+  const combinedStrategies: any[] = [];
+
+  Object.entries(allStrategyConfigs).forEach(([chainIdStr, chainData]) => {
+    const chainId = Number(chainIdStr);
+    const strategies = chainData.data.strategies;
+
+    Object.entries(strategies).forEach(([address, config]) => {
+      // Only include if strategy exists in database
+      if (dbStrategyMap[chainId]?.[address]) {
+        combinedStrategies.push({
+          chainId,
+          address,
+          config,
+          onchainData: dbStrategyMap[chainId][address],
+        });
+      }
+    });
+  });
+
+  return c.json({ strategies: combinedStrategies });
+});
+
+app.get("/pool-liquidity/:poolAddress", async (c) => {
+  const poolAddress = c.req.param("poolAddress");
+
+  if (!poolAddress) {
+    return c.json({ error: "Pool address is required" }, 400);
+  }
+
+  try {
+    // Validate the pool address format
+    const formattedPoolAddress = getAddress(poolAddress);
+
+    // Get liquidity data using the getLiquidityByTickRanges function
+    const liquidityData = await getLiquidityByTickRanges(formattedPoolAddress);
+
+    // return c.json(liquidityData);
+
+    return c.json({
+      poolAddress: formattedPoolAddress,
+      liquidityByTickRanges: liquidityData,
+    });
+  } catch (error) {
+    console.error("Error in pool-liquidity endpoint:", error);
+    return c.json(
+      {
+        error: "Failed to fetch liquidity data",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+async function getLiquidityByTickRanges(poolAddress: string) {
+  try {
+    // Query user_liquidity_position for the specified pool
+    const positions = await db
+      .select({
+        tick_lower: schema.user_liquidity_position.tick_lower,
+        tick_upper: schema.user_liquidity_position.tick_upper,
+        total_liquidity: schema.user_liquidity_position.total_liquidity,
+      })
+      .from(schema.user_liquidity_position)
+      .where(
+        eq(schema.user_liquidity_position.pool, poolAddress as `0x${string}`)
+      );
+    //return positions.length;
+
+    console.log(`Found ${positions.length} positions for pool ${poolAddress}`);
+
+    // Group positions by tick ranges and sum total_liquidity
+    const liquidityMap = new Map<string, bigint>();
+
+    for (const position of positions) {
+      // Skip positions with null/undefined values
+      if (
+        position.tick_lower === null ||
+        position.tick_upper === null ||
+        position.total_liquidity === null
+      ) {
+        console.log("Skipping position with null values:", position);
+        return "111";
+      }
+
+      const key = `${position.tick_lower}_${position.tick_upper}`;
+      const currentSum = liquidityMap.get(key) || 0n;
+
+      try {
+        // Safely convert the total_liquidity to BigInt
+        const liquidityValue = BigInt(String(position.total_liquidity));
+        liquidityMap.set(key, currentSum + liquidityValue);
+      } catch (error) {
+        console.error(
+          `Error converting liquidity to BigInt: ${position.total_liquidity}`,
+          error
+        );
+        // Continue processing other positions
+      }
+    }
+
+    // Format the result as an array of objects
+    const totalLiquidity = Array.from(liquidityMap.entries()).map(
+      ([key, sum]) => {
+        const [tick_lower, tick_upper] = key.split("_").map(Number);
+        return {
+          tick_lower,
+          tick_upper,
+          sumOfTotalLiquidity: sum.toString(),
+        };
+      }
+    );
+
+    return totalLiquidity;
+  } catch (error) {
+    console.error("Error in getLiquidityByTickRanges:", error);
+    // Log more details about the error
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+    }
+    return [];
+  }
+}
 
 export default app;

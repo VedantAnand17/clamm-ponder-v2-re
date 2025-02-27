@@ -34,6 +34,8 @@ import {
   liquidity_handler,
   internal_options,
   primePool,
+  feeStrategy,
+  feeStrategyToOptionMarkets,
 } from "ponder:schema";
 import { bigint, replaceBigInts } from "ponder";
 import { initialiseStrategyData } from "./hooks/initialiseStrategyData";
@@ -42,6 +44,7 @@ import { getOptionData } from "./hooks/getOptionData";
 import { OptionMarketABI } from "../abis/OptionMarketABI";
 import { UniswapV3PoolABI } from "../abis/UniswapV3PoolABI";
 import { PublicClient } from "viem";
+import { FeeStrategyV2ABI } from "../abis/FeeStrategyV2ABI";
 
 ponder.on("Automatorv21:Transfer", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
@@ -517,29 +520,51 @@ ponder.on(
   async ({ event, context }) => {
     const chainId = Number(context.network.chainId);
 
-    const [token0, token1, fee, tickSpacing] = await context.client.multicall({
-      contracts: [
-        {
-          abi: UniswapV3PoolABI,
-          address: event.args.primePool,
-          functionName: "token0",
-        },
-        {
-          abi: UniswapV3PoolABI,
-          address: event.args.primePool,
-          functionName: "token1",
-        },
-        {
-          abi: UniswapV3PoolABI,
-          address: event.args.primePool,
-          functionName: "fee",
-        },
-        {
-          abi: UniswapV3PoolABI,
-          address: event.args.primePool,
-          functionName: "tickSpacing",
-        },
-      ],
+    await context.db
+      .insert(feeStrategy)
+      .values({
+        feeStrategy: event.args.dpFee,
+        chainId,
+      })
+      .onConflictDoNothing();
+
+    const [token0, token1, fee, tickSpacing, currentFee] =
+      await context.client.multicall({
+        contracts: [
+          {
+            abi: UniswapV3PoolABI,
+            address: event.args.primePool,
+            functionName: "token0",
+          },
+          {
+            abi: UniswapV3PoolABI,
+            address: event.args.primePool,
+            functionName: "token1",
+          },
+          {
+            abi: UniswapV3PoolABI,
+            address: event.args.primePool,
+            functionName: "fee",
+          },
+          {
+            abi: UniswapV3PoolABI,
+            address: event.args.primePool,
+            functionName: "tickSpacing",
+          },
+          {
+            abi: FeeStrategyV2ABI,
+            address: event.args.dpFee,
+            functionName: "feePercentages",
+            args: [event.log.address],
+          },
+        ],
+      });
+
+    await context.db.insert(feeStrategyToOptionMarkets).values({
+      feeStrategy: event.args.dpFee,
+      chainId,
+      optionMarket: event.log.address,
+      currentFee: currentFee.status === "success" ? currentFee.result : 0n, // Add proper error handling
     });
 
     await context.db.insert(primePool).values({
@@ -571,6 +596,17 @@ ponder.on(
     }
   }
 );
+ponder.on("feeStrategy:FeeUpdate", async ({ event, context }) => {
+  const chainId = Number(context.network.chainId);
+
+  await context.db
+    .update(feeStrategyToOptionMarkets, {
+      chainId,
+      optionMarket: event.args.optionMarket,
+      feeStrategy: event.log.address,
+    })
+    .set({ currentFee: event.args.feePercentages });
+});
 
 ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
   const { client, db } = context;

@@ -529,58 +529,6 @@ export const settleOptionEventRelations = relations(
   })
 );
 
-// tvl and other stats section
-
-export const optionMarketTotals = onchainTable(
-  "option_market_totals",
-  (t) => ({
-    timestamp: t.integer().notNull(),
-    market: t.hex(),
-    chainId: t.integer().notNull(),
-    callAssetOutside: t.bigint(),
-    putAssetOutside: t.bigint(),
-    totalPremiumPaid: t.bigint(),
-    totalInterestVolume: t.bigint(),
-    totalUniqueTraders: t.bigint(),
-  }),
-  (table) => ({
-    pk: primaryKey({ columns: [table.market, table.chainId] }),
-  })
-);
-
-export const liquidityHandlerTotals = onchainTable(
-  "liquidity_handler_totals",
-  (t) => ({
-    timestamp: t.integer().notNull(),
-    liquidityHandler: t.hex(),
-    chainId: t.integer().notNull(),
-    token0Inside: t.bigint(),
-    token1Inside: t.bigint(),
-    totalTransactionVolume: t.bigint(),
-    totalUniqueLPs: t.bigint(),
-  }),
-  (table) => ({
-    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
-  })
-);
-
-export const liquidityHandlerActiveLiquidity = onchainTable(
-  "liquidity_handler_active_liquidity",
-  (t) => ({
-    timestamp: t.integer().notNull(),
-    liquidityHandler: t.hex(),
-    chainId: t.integer().notNull(),
-    pool: t.hex().notNull(),
-    tickLower: t.bigint(),
-    tickUpper: t.bigint(),
-    usedLiquidity: t.bigint(),
-    freeLiquidity: t.bigint(),
-  }),
-  (table) => ({
-    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
-  })
-);
-
 // position manager
 
 // liquidity handler
@@ -862,6 +810,142 @@ export const automatorAPY = onchainTable(
   (table) => ({
     pk: primaryKey({
       columns: [table.automator, table.chainId],
+    }),
+  })
+);
+
+export const poolTVLandOpenInterest = onchainTable(
+  "poolTVLandOpenInterest",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    pool: t.hex().notNull(),
+    timestamp: t.integer(),
+    token0balance: t.bigint(),
+    token1balance: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.pool, table.chainId],
+    }),
+  })
+);
+
+// tvl and other stats section
+
+export const optionMarketTotals = onchainTable(
+  "option_market_totals",
+  (t) => ({
+    timestamp: t.integer().notNull(),
+    market: t.hex(),
+    chainId: t.integer().notNull(),
+    callAssetOutside: t.bigint(),
+    putAssetOutside: t.bigint(),
+    totalPremiumPaid: t.bigint(),
+    totalInterestVolume: t.bigint(),
+    totalUniqueTraders: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.market, table.chainId] }),
+  })
+);
+
+export const liquidityHandlerTotals = onchainTable(
+  "liquidity_handler_totals",
+  (t) => ({
+    timestamp: t.integer().notNull(),
+    liquidityHandler: t.hex(),
+    chainId: t.integer().notNull(),
+    token0Inside: t.bigint(),
+    token1Inside: t.bigint(),
+    totalTransactionVolume: t.bigint(),
+    totalUniqueLPs: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
+  })
+);
+
+export const liquidityHandlerActiveLiquidity = onchainTable(
+  "liquidity_handler_active_liquidity",
+  (t) => ({
+    timestamp: t.integer().notNull(),
+    liquidityHandler: t.hex(),
+    chainId: t.integer().notNull(),
+    pool: t.hex().notNull(),
+    tickLower: t.bigint(),
+    tickUpper: t.bigint(),
+    usedLiquidity: t.bigint(),
+    freeLiquidity: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
+  })
+);
+
+export const automatorAssets = onchainTable(
+  "automatorAssets",
+  (t) => ({
+    automator: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    freePoolPositionAmount0: t.bigint(),
+    freePoolPositionAmount1: t.bigint(),
+    freeAssets: t.bigint(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.automator, table.chainId, table.timestamp],
+    }),
+  })
+);
+
+// fee strategy
+export const feeStrategy = onchainTable(
+  "feeStrategy",
+  (t) => ({
+    feeStrategy: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.feeStrategy, table.chainId] }),
+  })
+);
+
+export const feeStrategyToOptionMarkets = onchainTable(
+  "feeStrategyToOptionMarkets",
+  (t) => ({
+    feeStrategy: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    optionMarket: t.hex().notNull(),
+    currentFee: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.feeStrategy, table.optionMarket, table.chainId],
+    }),
+    uniqueOptionMarket: index("unique_option_market_per_chain").on(
+      table.optionMarket,
+      table.chainId
+    ),
+  })
+);
+
+export const feeStrategyToOptionMarketRelation_optionMarket = relations(
+  feeStrategyToOptionMarkets,
+  ({ one }) => ({
+    optionMarket: one(option_markets, {
+      fields: [feeStrategyToOptionMarkets.optionMarket],
+      references: [option_markets.address],
+    }),
+  })
+);
+
+export const feeStrategyToOptionMarketRelation_feeStrategy = relations(
+  feeStrategyToOptionMarkets,
+  ({ one }) => ({
+    feeStrategy: one(feeStrategy, {
+      fields: [feeStrategyToOptionMarkets.feeStrategy],
+      references: [feeStrategy.feeStrategy],
     }),
   })
 );

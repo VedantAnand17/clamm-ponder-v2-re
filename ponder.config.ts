@@ -8,6 +8,7 @@ import { OptionMarketABI } from "./abis/OptionMarketABI";
 import { PositionManagerABI } from "./abis/PositionManagerABI";
 import { LiquidityHandlerABI } from "./abis/LiquidityHandlerABI";
 import { OptionPricingV2ABI } from "./abis/OptionPricingV2ABI";
+import { FeeStrategyV2ABI } from "./abis/FeeStrategyV2ABI";
 
 export default createConfig({
   ordering: "multichain",
@@ -27,6 +28,16 @@ export default createConfig({
     Automator01APY: {
       network: "arbitrum",
       startBlock: 26497566,
+      interval: 10000,
+    },
+    PoolTVLandOpenInterest: {
+      network: "tenderly",
+      startBlock: 26497566,
+      interval: 100,
+    },
+    AutomatorAssets: {
+      network: "arbitrum",
+      startBlock: 310066571,
       interval: 10000,
     },
   },
@@ -134,6 +145,33 @@ export default createConfig({
           "event LogOptionsMarketInitialized(address _primePool, address _optionPricing, address _dpFee, address _callAsset, address _putAsset)"
         ),
         parameter: "_optionPricing",
+      }),
+    },
+    feeStrategy: {
+      abi: FeeStrategyV2ABI,
+      network: {
+        arbitrum: {
+          address: [
+            "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+            "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          ],
+          startBlock: 297859265,
+        },
+        tenderly: {
+          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
+          startBlock: 26497566,
+        },
+      },
+      address: factory({
+        address: [
+          "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
+          "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
+          "0x0DF5faE5a2F67011B8079B31D17c490618aF853e",
+        ],
+        event: parseAbiItem(
+          "event LogOptionsMarketInitialized(address _primePool, address _optionPricing, address _dpFee, address _callAsset, address _putAsset)"
+        ),
+        parameter: "_dpFee",
       }),
     },
     ERC20: {
