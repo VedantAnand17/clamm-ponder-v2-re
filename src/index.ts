@@ -596,6 +596,29 @@ ponder.on(
     }
   }
 );
+
+ponder.on("OptionMarket:LogUpdateAddress", async ({ event, context }) => {
+  const chainId = Number(context.network.chainId);
+
+  await context.db
+    .update(feeStrategy, {
+      feeStrategy: event.args.dpFee,
+      chainId,
+    })
+    .set({
+      feeStrategy: event.args.dpFee,
+    });
+
+  await context.db
+    .update(option_markets, {
+      address: event.log.address,
+      chainId,
+    })
+    .set({
+      optionPricing: event.args.optionPricing,
+    });
+});
+
 ponder.on("feeStrategy:FeeUpdate", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 

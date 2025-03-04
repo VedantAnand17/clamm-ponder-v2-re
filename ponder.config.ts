@@ -40,6 +40,11 @@ export default createConfig({
       startBlock: 310066571,
       interval: 10000,
     },
+    tvlInfo: {
+      network: "tenderly",
+      startBlock: 26498072,
+      interval: 1,
+    },
   },
   contracts: {
     Automatorv21: {
@@ -53,7 +58,10 @@ export default createConfig({
           endBlock: 213059866,
         },
         tenderly: {
-          address: ["0x5C110e73Eb9EfF814C545c5B03eC6CC2218843f8"],
+          address: [
+            "0xcc7349861cA35fA0ABf7F3d833498c687F0FFD1e",
+            "0x63b63c69b3B5806b0F508D6ac1E9e14Ed1b61f6E",
+          ],
           startBlock: 26497566,
         },
       },
@@ -69,7 +77,7 @@ export default createConfig({
           startBlock: 297859265,
         },
         tenderly: {
-          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
+          address: ["0xd9e33c71D5A405A642C173f8f914F1Bb59009Aaf"],
           startBlock: 26497566,
         },
       },
@@ -78,7 +86,7 @@ export default createConfig({
     PositionManager: {
       network: {
         tenderly: {
-          address: ["0xcb5082706331928a7825F898A78d8bcCdfE81FB4"],
+          address: ["0x5e53fe655b20453bf2E5Fa4079B7EA8C0623b0A5"],
           startBlock: 26497566,
         },
       },
@@ -87,7 +95,7 @@ export default createConfig({
     LiquidityHandler: {
       network: {
         tenderly: {
-          address: ["0x1953EF3f1ec5fB63576B7f8fdE0Ed3433D1D2a97"],
+          address: ["0x2Cab86e7b648EbDe5dDFae913Bdb58DA3d723Cd6"],
           startBlock: 26497566,
         },
       },
@@ -96,29 +104,11 @@ export default createConfig({
     primePool: {
       abi: UniswapV3PoolABI,
       network: {
-        arbitrum: {
-          address: [
-            "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
-            "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
-          ],
-          startBlock: 297859265,
-        },
         tenderly: {
-          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
+          address: ["0xa1A46BDe565A7f083c8d0a596e8A4fcd5571E9a6"],
           startBlock: 26497566,
         },
       },
-      address: factory({
-        address: [
-          "0xcD697B919AA000378fe429b47eb0fF0D17d3D435",
-          "0x502751c59fEb16959526f1f8aa767D84b028bFbD",
-          "0x0DF5faE5a2F67011B8079B31D17c490618aF853e",
-        ],
-        event: parseAbiItem(
-          "event LogOptionsMarketInitialized(address _primePool, address _optionPricing, address _dpFee, address _callAsset, address _putAsset)"
-        ),
-        parameter: "_primePool",
-      }),
     },
     optionPricing: {
       abi: OptionPricingV2ABI,
@@ -131,7 +121,7 @@ export default createConfig({
           startBlock: 297859265,
         },
         tenderly: {
-          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
+          address: ["0xce4B6cF0A2eb9c7e0cCed9B3c50326e7816157A6"],
           startBlock: 26497566,
         },
       },

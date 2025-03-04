@@ -13,18 +13,28 @@ ponder.on("optionPricing:IVsUpdated", async ({ event, context }) => {
 
   await context.db
     .insert(optionPricing)
-    .values({
-      chainId,
-      optionPricing: event.log.address,
-      ttlIV: event.args.ttls.map((ttl, index) => ({
-        ttl: Number(ttl),
-        IV: event.args.ivs[index] ?? 0n,
-      })),
-    })
-    .onConflictDoUpdate({
-      ttlIV: event.args.ttls.map((ttl, index) => ({
-        ttl: Number(ttl),
-        IV: event.args.ivs[index] ?? 0n,
-      })),
-    });
+    .values(
+      replaceBigInts(
+        {
+          chainId,
+          optionPricing: event.log.address,
+          ttlIV: event.args.ttls.map((ttl, index) => ({
+            ttl: Number(ttl),
+            IV: event.args.ivs[index] ?? 0n,
+          })),
+        },
+        String
+      )
+    )
+    .onConflictDoUpdate(
+      replaceBigInts(
+        {
+          ttlIV: event.args.ttls.map((ttl, index) => ({
+            ttl: Number(ttl),
+            IV: event.args.ivs[index] ?? 0n,
+          })),
+        },
+        String
+      )
+    );
 });

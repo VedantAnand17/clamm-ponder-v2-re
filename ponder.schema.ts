@@ -814,40 +814,42 @@ export const automatorAPY = onchainTable(
   })
 );
 
-export const poolTVLandOpenInterest = onchainTable(
-  "poolTVLandOpenInterest",
+export const optionMarketTotals = onchainTable(
+  "option_market_totals",
   (t) => ({
     chainId: t.integer().notNull(),
-    pool: t.hex().notNull(),
+    optionMarket: t.hex().notNull(),
     timestamp: t.integer(),
-    token0balance: t.bigint(),
-    token1balance: t.bigint(),
+    openCallPositions: t.bigint(),
+    openPutPositions: t.bigint(),
+    callAssetOutside: t.bigint(),
+    putAssetOutside: t.bigint(),
   }),
   (table) => ({
     pk: primaryKey({
-      columns: [table.pool, table.chainId],
+      columns: [table.optionMarket, table.chainId, table.timestamp],
     }),
   })
 );
 
 // tvl and other stats section
 
-export const optionMarketTotals = onchainTable(
-  "option_market_totals",
-  (t) => ({
-    timestamp: t.integer().notNull(),
-    market: t.hex(),
-    chainId: t.integer().notNull(),
-    callAssetOutside: t.bigint(),
-    putAssetOutside: t.bigint(),
-    totalPremiumPaid: t.bigint(),
-    totalInterestVolume: t.bigint(),
-    totalUniqueTraders: t.bigint(),
-  }),
-  (table) => ({
-    pk: primaryKey({ columns: [table.market, table.chainId] }),
-  })
-);
+// export const optionMarketTotals = onchainTable(
+//   "option_market_totals",
+//   (t) => ({
+//     timestamp: t.integer().notNull(),
+//     market: t.hex(),
+//     chainId: t.integer().notNull(),
+//     callAssetOutside: t.bigint(),
+//     putAssetOutside: t.bigint(),
+//     totalPremiumPaid: t.bigint(),
+//     totalInterestVolume: t.bigint(),
+//     totalUniqueTraders: t.bigint(),
+//   }),
+//   (table) => ({
+//     pk: primaryKey({ columns: [table.market, table.chainId] }),
+//   })
+// );
 
 export const liquidityHandlerTotals = onchainTable(
   "liquidity_handler_totals",
@@ -855,13 +857,13 @@ export const liquidityHandlerTotals = onchainTable(
     timestamp: t.integer().notNull(),
     liquidityHandler: t.hex(),
     chainId: t.integer().notNull(),
-    token0Inside: t.bigint(),
-    token1Inside: t.bigint(),
-    totalTransactionVolume: t.bigint(),
-    totalUniqueLPs: t.bigint(),
+    totalFreeAmount0: t.bigint(),
+    totalFreeAmount1: t.bigint(),
   }),
   (table) => ({
-    pk: primaryKey({ columns: [table.liquidityHandler, table.chainId] }),
+    pk: primaryKey({
+      columns: [table.liquidityHandler, table.chainId, table.timestamp],
+    }),
   })
 );
 

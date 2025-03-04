@@ -503,4 +503,110 @@ async function getLiquidityByTickRanges(poolAddress: string) {
   }
 }
 
+app.get("/get-markets", async (c) => {
+  try {
+    // Query all option markets
+    const markets = await db
+      .select({
+        address: schema.option_markets.address,
+        chainId: schema.option_markets.chainId,
+        name: schema.option_markets.name,
+        symbol: schema.option_markets.symbol,
+        primePool: schema.option_markets.primePool,
+        optionPricing: schema.option_markets.optionPricing,
+        dpFee: schema.option_markets.dpFee,
+        callAsset: schema.option_markets.callAsset,
+        putAsset: schema.option_markets.putAsset,
+      })
+      .from(schema.option_markets);
+
+    return c.json({ markets });
+  } catch (error) {
+    console.error("Error in get-markets endpoint:", error);
+    return c.json(
+      {
+        error: "Failed to fetch option markets data",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+app.get("/get-market/:address", async (c) => {
+  const marketAddress = c.req.param("address");
+
+  if (!marketAddress) {
+    return c.json({ error: "Market address is required" }, 400);
+  }
+
+  try {
+    // Validate the market address format
+    const formattedMarketAddress = getAddress(marketAddress);
+
+    // Query the specific option market
+    const market = await db
+      .select({
+        address: schema.option_markets.address,
+        chainId: schema.option_markets.chainId,
+        name: schema.option_markets.name,
+        symbol: schema.option_markets.symbol,
+        primePool: schema.option_markets.primePool,
+        optionPricing: schema.option_markets.optionPricing,
+        dpFee: schema.option_markets.dpFee,
+        callAsset: schema.option_markets.callAsset,
+        putAsset: schema.option_markets.putAsset,
+      })
+      .from(schema.option_markets)
+      .where(
+        eq(
+          schema.option_markets.address,
+          formattedMarketAddress as `0x${string}`
+        )
+      )
+      .limit(1);
+
+    if (market.length === 0) {
+      return c.json({ error: "Option market not found" }, 404);
+    }
+
+    // Get the optionPricing data for this market
+    const pricingData = await db
+      .select({
+        ttlIV: schema.optionPricing.ttlIV,
+      })
+      .from(schema.optionPricing)
+      .where(
+        eq(
+          schema.optionPricing.optionPricing,
+          (market[0]?.optionPricing || "") as `0x${string}`
+        )
+      )
+      .limit(1);
+
+    // Combine the market data with the pricing data
+    const marketWithPricing = market[0]
+      ? {
+          ...market[0],
+          ttlIV: pricingData.length > 0 ? pricingData[0].ttlIV : null,
+        }
+      : null;
+
+    if (!marketWithPricing) {
+      return c.json({ error: "Option market data is incomplete" }, 404);
+    }
+
+    return c.json({ market: marketWithPricing });
+  } catch (error) {
+    console.error("Error in get-market endpoint:", error);
+    return c.json(
+      {
+        error: "Failed to fetch option market data",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
 export default app;
