@@ -797,6 +797,21 @@ export const optionPricing = onchainTable(
   })
 );
 
+export const IvUpdateEvents = onchainTable(
+  "IvUpdateEvents",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    optionPricing: t.hex().notNull(),
+    ttlIV: t.json().$type<{ ttl: number; IV: bigint }[]>(),
+    timestamp: t.integer(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.optionPricing, table.chainId, table.timestamp],
+    }),
+  })
+);
+
 // APY calculations for Automator
 
 export const automatorAPY = onchainTable(

@@ -12,28 +12,28 @@ import * as fs from "fs/promises";
 import { Automatorv21ABI } from "../abis/Automatorv21ABI";
 import { VaultInspectorV2ABI } from "../abis/VaultInspectorV2";
 
-ponder.on("AutomatorAssets:block", async ({ event, context }) => {
-  const freeAssets = await context.client.readContract({
-    abi: VaultInspectorV2ABI,
-    address: "0x9b03c32fa0695aDBFe49f38b552861cF46264832",
-    functionName: "freeAssets",
-    args: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C"],
-  });
-  const [sumAmount0, sumAmount1] = await context.client.readContract({
-    abi: VaultInspectorV2ABI,
-    address: "0x9b03c32fa0695aDBFe49f38b552861cF46264832",
-    functionName: "freePoolPositionInToken01",
-    args: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C"],
-  });
-  await context.db.insert(automatorAssets).values({
-    automator: "0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C",
-    chainId: context.network.chainId,
-    timestamp: Number(event.block.timestamp),
-    freePoolPositionAmount0: sumAmount0,
-    freePoolPositionAmount1: sumAmount1,
-    freeAssets: freeAssets,
-  });
-});
+// ponder.on("AutomatorAssets:block", async ({ event, context }) => {
+//   const freeAssets = await context.client.readContract({
+//     abi: VaultInspectorV2ABI,
+//     address: "0x9b03c32fa0695aDBFe49f38b552861cF46264832",
+//     functionName: "freeAssets",
+//     args: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C"],
+//   });
+//   const [sumAmount0, sumAmount1] = await context.client.readContract({
+//     abi: VaultInspectorV2ABI,
+//     address: "0x9b03c32fa0695aDBFe49f38b552861cF46264832",
+//     functionName: "freePoolPositionInToken01",
+//     args: ["0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C"],
+//   });
+//   await context.db.insert(automatorAssets).values({
+//     automator: "0xe1B68841E764Cc31be1Eb1e59d156a4ED1217c2C",
+//     chainId: context.network.chainId,
+//     timestamp: Number(event.block.timestamp),
+//     freePoolPositionAmount0: sumAmount0,
+//     freePoolPositionAmount1: sumAmount1,
+//     freeAssets: freeAssets,
+//   });
+// });
 
 // ponder.on("Automator01APY:block", async ({ event, context }) => {
 //   // Fetch the price at the current block height.
