@@ -24,15 +24,15 @@ export async function getOptionData(
   const calls = Array.from({ length: tickArrayLen }, (_, i) => ({
     address: marketAddress,
     abi: OptionMarketABI,
-    functionName: 'opTickMap',
+    functionName: "opTickMap",
     args: [optionId, BigInt(i)],
   }));
 
   // Execute multicall with proper type handling
-  const results = await client.multicall({
+  const results = (await client.multicall({
     contracts: calls,
-    allowFailure: false
-  }) as unknown as [Address, Address, Address, bigint, bigint, bigint][];
+    allowFailure: false,
+  })) as unknown as [Address, Address, Address, bigint, bigint, bigint][];
 
   // Process results with proper typing
   return results.map((result) => {
@@ -63,9 +63,11 @@ export async function getOptionData(
 
     // Calculate price from tick using Uniswap SDK
     const price = tickToPrice(token0, token1, Number(tickLower));
-    
-    // Convert price to the correct format
-    let strike = BigInt(Math.floor(parseFloat(price.toFixed(18)) * 1e18));
+
+    // Convert price to the correct format using the appropriate method
+    // The Price object has methods like toSignificant() to handle JSBI conversion
+    const priceValue = price.toSignificant(18);
+    let strike = BigInt(Math.floor(parseFloat(priceValue) * 1e18));
 
     // If token1 is volatile, invert the price
     if (config.isToken1Volatile) {
