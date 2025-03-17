@@ -61,27 +61,40 @@ export async function getOptionData(
       config.token1.symbol
     );
 
-    // Calculate price from tick using Uniswap SDK
-    const price = tickToPrice(token0, token1, Number(tickLower));
+    try {
+      // Convert bigint to number for tick values
+      const tickLowerNum = Number(tickLower);
+      const tickUpperNum = Number(tickUpper);
 
-    // Convert price to the correct format using the appropriate method
-    // The Price object has methods like toSignificant() to handle JSBI conversion
-    const priceValue = price.toSignificant(18);
-    let strike = BigInt(Math.floor(parseFloat(priceValue) * 1e18));
+      // Calculate price from tick using Uniswap SDK
+      // Make sure we're passing a number to tickToPrice
+      const price = tickToPrice(token0, token1, tickLowerNum);
 
-    // If token1 is volatile, invert the price
-    if (config.isToken1Volatile) {
-      strike = BigInt(1e36) / strike;
+      // Convert price to the correct format using the appropriate method
+      // The Price object has methods like toSignificant() to handle JSBI conversion
+      const priceValue = price.toSignificant(18);
+      let strike = BigInt(Math.floor(parseFloat(priceValue) * 1e18));
+
+      // If token1 is volatile, invert the price
+      if (config.isToken1Volatile) {
+        strike = BigInt(1e36) / strike;
+      }
+
+      return {
+        handler,
+        pool,
+        hook,
+        tickLower: tickLowerNum,
+        tickUpper: tickUpperNum,
+        liquidityToUse,
+        strike,
+      };
+    } catch (error: any) {
+      console.error(
+        `Error processing tick data: ${error?.message || "Unknown error"}`
+      );
+      console.error(`Tick values - lower: ${tickLower}, upper: ${tickUpper}`);
+      throw error;
     }
-
-    return {
-      handler,
-      pool,
-      hook,
-      tickLower: Number(tickLower),
-      tickUpper: Number(tickUpper),
-      liquidityToUse,
-      strike,
-    };
   });
 }

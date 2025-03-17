@@ -18,8 +18,8 @@ dependencies:
     specifier: ^4.5.0
     version: 4.7.0
   jsbi:
-    specifier: ^4.3.0
-    version: 4.3.0
+    specifier: ^3.2.5
+    version: 3.2.5
   ponder:
     specifier: ^0.9.23
     version: 0.9.23(@types/node@20.17.17)(hono@4.7.0)(typescript@5.7.3)(viem@2.22.23)
@@ -3384,10 +3384,6 @@ packages:
 
   /jsbi@3.2.5:
     resolution: {integrity: sha512-aBE4n43IPvjaddScbvWRA2YlTzKEynHzu7MqOyTipdHucf/VxS63ViCjxYRg86M8Rxwbt/GfzHl1kKERkt45fQ==}
-    dev: false
-
-  /jsbi@4.3.0:
-    resolution: {integrity: sha512-SnZNcinB4RIcnEyZqFPdGPVgrg2AcnykiBy0sHVJQKHYeaLUvi3Exj+iaPpLnFVkDPZIV4U0yvgC9/R4uEAZ9g==}
     dev: false
 
   /json-buffer@3.0.1:

@@ -801,13 +801,15 @@ app.get("/get-positions", async (c) => {
       // Calculate amount for each internal option and sum them
       for (const internalOption of position.internalOptions) {
         try {
-          // Use proper JSBI conversion for tick values
-          const sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(
-            Number(internalOption.tickLower)
-          );
-          const sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(
-            Number(internalOption.tickUpper)
-          );
+          // Convert tick values to numbers
+          const tickLower = Number(internalOption.tickLower);
+          const tickUpper = Number(internalOption.tickUpper);
+
+          // Get sqrt ratios using TickMath
+          const sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+          const sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+
+          // Convert liquidity to JSBI
           const liquidity = JSBI.BigInt(internalOption.liquidity);
 
           let optionAmount;
@@ -827,7 +829,7 @@ app.get("/get-positions", async (c) => {
             );
           }
 
-          // Properly handle JSBI addition
+          // Add to total amount using JSBI.add
           totalAmount = JSBI.add(totalAmount, optionAmount);
         } catch (error) {
           console.error(
