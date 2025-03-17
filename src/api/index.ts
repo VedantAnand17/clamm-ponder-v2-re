@@ -4,6 +4,8 @@ import { Hono } from "hono";
 import { client, graphql, eq, and, lt, gt } from "ponder";
 import { getAddress } from "viem";
 import { getSpecificStrategy, getAllStrategies } from "../../strategies";
+import JSBI from "jsbi";
+import { TickMath, SqrtPriceMath } from "@uniswap/v3-sdk";
 
 const app = new Hono();
 
@@ -19,7 +21,7 @@ app.get("/hello", (c) => {
 app.get("/expiring-options/:minutes?", async (c) => {
   const minutes =
     c.req.param("minutes") === undefined
-      ? 50
+      ? 5
       : parseInt(c.req.param("minutes")!);
   const fiveMinutesFromNow = Math.floor(Date.now() / 1000) + 60 * minutes; // current unix timestamp + X minutes
   const currentTime = Math.floor(Date.now() / 1000);
@@ -602,6 +604,286 @@ app.get("/get-market/:address", async (c) => {
     return c.json(
       {
         error: "Failed to fetch option market data",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+app.get("/get-positions", async (c) => {
+  const address = c.req.query("address");
+  const chainId = c.req.query("chainId")
+    ? parseInt(c.req.query("chainId"))
+    : undefined;
+
+  // Get the API URL from environment variables
+  const ratesApiUrl = process.env.RATES_API_URL;
+
+  // Validate input parameters
+  if (!address) {
+    return c.json({ error: "Address parameter is required" }, 400);
+  }
+
+  if (!chainId) {
+    return c.json({ error: "ChainId parameter is required" }, 400);
+  }
+
+  try {
+    // Validate and normalize the address
+    const formattedAddress = getAddress(address);
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+
+    // Query for live positions
+    const positions = await db
+      .select({
+        // Token data
+        tokenId: schema.erc721_token.id,
+        market: schema.erc721_token.market,
+        isCall: schema.erc721_token.isCall,
+        expiry: schema.erc721_token.expiry,
+        premiumAmount: schema.erc721_token.premiumAmount,
+        protocolFees: schema.erc721_token.protocolFees,
+        // Market data
+        callAsset: schema.option_markets.callAsset,
+        putAsset: schema.option_markets.putAsset,
+        // Internal option data
+        tickLower: schema.internal_options.tickLower,
+        tickUpper: schema.internal_options.tickUpper,
+        liquidityAtLive: schema.internal_options.liquidityAtLive,
+        index: schema.internal_options.index,
+        pool: schema.internal_options.pool,
+      })
+      .from(schema.erc721_token)
+      .innerJoin(
+        schema.option_markets,
+        and(
+          eq(schema.erc721_token.market, schema.option_markets.address),
+          eq(schema.erc721_token.chainId, schema.option_markets.chainId)
+        )
+      )
+      .innerJoin(
+        schema.internal_options,
+        and(
+          eq(schema.erc721_token.id, schema.internal_options.tokenId),
+          eq(schema.erc721_token.market, schema.internal_options.optionMarket),
+          eq(schema.erc721_token.chainId, schema.internal_options.chainId)
+        )
+      )
+      .where(
+        and(
+          eq(schema.erc721_token.owner, formattedAddress as `0x${string}`),
+          eq(schema.erc721_token.chainId, chainId),
+          gt(schema.erc721_token.expiry, currentTimestamp),
+          gt(schema.internal_options.liquidityAtLive, 0n)
+        )
+      );
+
+    // Get pool configurations to determine token0 and token1
+    const poolConfigs = await db
+      .select({
+        pool: schema.primePool.primePool,
+        token0: schema.primePool.token0,
+        token1: schema.primePool.token1,
+      })
+      .from(schema.primePool)
+      .where(eq(schema.primePool.chainId, chainId));
+
+    // Create a map of pool addresses to their configurations
+    const poolConfigMap = new Map<string, { token0: string; token1: string }>();
+    for (const config of poolConfigs) {
+      if (config.pool && config.token0 && config.token1) {
+        poolConfigMap.set(config.pool, {
+          token0: config.token0,
+          token1: config.token1,
+        });
+      }
+    }
+
+    // Group positions by token for processing
+    const positionsByToken = new Map<
+      string,
+      {
+        tokenId: bigint;
+        market: string;
+        callAsset: string;
+        putAsset: string;
+        isCall: boolean;
+        expiry: number;
+        paid: string;
+        pool: string;
+        amount: string;
+        internalOptions: {
+          tickLower: number;
+          tickUpper: number;
+          liquidity: string;
+        }[];
+      }
+    >();
+
+    // Process query results
+    for (const position of positions) {
+      const tokenKey = `${position.tokenId}-${position.market}`;
+
+      if (!positionsByToken.has(tokenKey)) {
+        const premiumAmount = position.premiumAmount || 0n;
+        const protocolFees = position.protocolFees || 0n;
+
+        positionsByToken.set(tokenKey, {
+          tokenId: position.tokenId || 0n,
+          market: position.market || "",
+          callAsset: position.callAsset || "",
+          putAsset: position.putAsset || "",
+          isCall: position.isCall || false,
+          expiry: position.expiry || 0,
+          paid: (premiumAmount + protocolFees).toString(),
+          pool: position.pool || "",
+          amount: "0", // Will calculate this after collecting all internal options
+          internalOptions: [],
+        });
+      }
+
+      // Add internal option data
+      const positionData = positionsByToken.get(tokenKey)!;
+      positionData.internalOptions.push({
+        tickLower: position.tickLower || 0,
+        tickUpper: position.tickUpper || 0,
+        liquidity: (position.liquidityAtLive || 0n).toString(),
+      });
+    }
+
+    // Calculate amount for each position
+    for (const [tokenKey, position] of positionsByToken.entries()) {
+      let totalAmount = JSBI.BigInt(0);
+
+      // Get pool config to determine token0 and token1
+      const poolConfig = poolConfigMap.get(position.pool);
+
+      if (!poolConfig) {
+        console.warn(`Pool configuration not found for pool: ${position.pool}`);
+        continue;
+      }
+
+      // Determine if we should use amount0 or amount1 based on isCall and token positions
+      const useAmount0 =
+        position.isCall &&
+        position.callAsset.toLowerCase() === poolConfig.token0.toLowerCase();
+
+      // Calculate amount for each internal option and sum them
+      for (const internalOption of position.internalOptions) {
+        try {
+          const sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(
+            internalOption.tickLower
+          );
+          const sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(
+            internalOption.tickUpper
+          );
+          const liquidity = JSBI.BigInt(internalOption.liquidity);
+
+          let optionAmount;
+          if (useAmount0) {
+            optionAmount = SqrtPriceMath.getAmount0Delta(
+              sqrtRatioAX96,
+              sqrtRatioBX96,
+              liquidity,
+              true // round up
+            );
+          } else {
+            optionAmount = SqrtPriceMath.getAmount1Delta(
+              sqrtRatioAX96,
+              sqrtRatioBX96,
+              liquidity,
+              true // round up
+            );
+          }
+
+          totalAmount = JSBI.add(totalAmount, optionAmount);
+        } catch (error) {
+          console.error(
+            `Error calculating amount for option ${tokenKey}:`,
+            error
+          );
+        }
+      }
+
+      // Update the position with the calculated amount
+      position.amount = totalAmount.toString();
+    }
+
+    // Prepare profit calculation requests - one request per token ID
+    const profitRequests = Array.from(positionsByToken.entries()).map(
+      ([_, position]) => ({
+        market: position.market,
+        pool: position.pool,
+        tokenId: position.tokenId.toString(),
+        isCall: position.isCall,
+        chainId: chainId,
+        internalOptions: position.internalOptions,
+      })
+    );
+
+    // Make batch requests to profit calculation API
+    const profitResults = await Promise.all(
+      profitRequests.map(async (payload) => {
+        try {
+          const response = await fetch(ratesApiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          return {
+            tokenId: payload.tokenId,
+            market: payload.market,
+            profit: data.profit || "0",
+          };
+        } catch (error) {
+          console.error(
+            `Error fetching profit for token ${payload.tokenId}:`,
+            error
+          );
+          return {
+            tokenId: payload.tokenId,
+            market: payload.market,
+            profit: "0",
+          };
+        }
+      })
+    );
+
+    // Create profit lookup map
+    const profitByToken = new Map<string, string>();
+    for (const result of profitResults) {
+      profitByToken.set(`${result.tokenId}-${result.market}`, result.profit);
+    }
+
+    // Format final response
+    const formattedPositions = Array.from(positionsByToken.entries()).map(
+      ([tokenKey, position]) => ({
+        optionMarket: position.market,
+        callAsset: position.callAsset,
+        putAsset: position.putAsset,
+        isCall: position.isCall,
+        profit: profitByToken.get(tokenKey) || "0",
+        expiry: position.expiry,
+        paid: position.paid,
+        amount: position.amount,
+      })
+    );
+
+    return c.json({ positions: formattedPositions });
+  } catch (error) {
+    console.error("Error fetching positions:", error);
+    return c.json(
+      {
+        error: "Failed to fetch positions",
         message: error instanceof Error ? error.message : String(error),
       },
       500

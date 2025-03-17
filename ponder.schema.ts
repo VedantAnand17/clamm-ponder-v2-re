@@ -240,6 +240,8 @@ export const erc721_token = onchainTable(
     opTickArrayLen: t.integer(),
     isCall: t.boolean(),
     expiry: t.integer(),
+    premiumAmount: t.bigint(),
+    protocolFees: t.bigint(),
   }),
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.market, table.chainId] }),

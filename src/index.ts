@@ -314,6 +314,8 @@ ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
         opTickArrayLen: 0, // Will be updated by LogMintOption event
         isCall: false, // Will be updated by LogMintOption event
         expiry: 0, // Will be updated by LogMintOption event
+        premiumAmount: 0n, // Will be updated by LogMintOption event
+        protocolFees: 0n, // Will be updated by LogMintOption event
       })
       .onConflictDoNothing();
   } else {
@@ -342,6 +344,8 @@ ponder.on("OptionMarket:Transfer", async ({ event, context }) => {
           opTickArrayLen: 0,
           isCall: false,
           expiry: 0,
+          premiumAmount: 0n,
+          protocolFees: 0n,
         })
         .onConflictDoNothing();
     }
@@ -386,6 +390,8 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
       opTickArrayLen,
       isCall: event.args.isCall,
       expiry: Number(opData[3]),
+      premiumAmount: event.args.premiumAmount,
+      protocolFees: event.args.protocolFees,
     })
     .onConflictDoNothing();
 
@@ -400,6 +406,8 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
       opTickArrayLen: Number(opData[0]),
       isCall: event.args.isCall,
       expiry: Number(opData[3]),
+      premiumAmount: event.args.premiumAmount,
+      protocolFees: event.args.protocolFees,
     });
 
   // Get option ticks data
