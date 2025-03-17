@@ -611,6 +611,21 @@ app.get("/get-market/:address", async (c) => {
   }
 });
 
+// Helper function to safely convert JSBI to number
+function jsbiToNumber(jsbiValue) {
+  try {
+    // Use toNumber() method for JSBI instances
+    if (jsbiValue && typeof jsbiValue.toNumber === "function") {
+      return jsbiValue.toNumber();
+    }
+    // If it's already a number or can be converted to one
+    return Number(jsbiValue);
+  } catch (error) {
+    console.error("Error converting JSBI to number:", error);
+    return 0;
+  }
+}
+
 app.get("/get-positions", async (c) => {
   const address = c.req.query("address");
   const chainId = c.req.query("chainId")
@@ -619,6 +634,8 @@ app.get("/get-positions", async (c) => {
 
   // Get the API URL from environment variables
   const ratesApiUrl = process.env.RATES_API_URL;
+  // Set timeout for API requests (in milliseconds)
+  const apiTimeout = parseInt(process.env.API_TIMEOUT || "60000"); // Default 10 seconds
 
   // Validate input parameters
   if (!address) {
@@ -679,6 +696,11 @@ app.get("/get-positions", async (c) => {
         )
       );
 
+    // If no positions found, return early
+    if (positions.length === 0) {
+      return c.json({ positions: [] });
+    }
+
     // Get pool configurations to determine token0 and token1
     const poolConfigs = await db
       .select({
@@ -713,6 +735,7 @@ app.get("/get-positions", async (c) => {
         paid: string;
         pool: string;
         amount: string;
+        liquidityValues: string[]; // Array of liquidityAtLive values
         internalOptions: {
           tickLower: number;
           tickUpper: number;
@@ -739,16 +762,22 @@ app.get("/get-positions", async (c) => {
           paid: (premiumAmount + protocolFees).toString(),
           pool: position.pool || "",
           amount: "0", // Will calculate this after collecting all internal options
+          liquidityValues: [], // Will store all liquidityAtLive values
           internalOptions: [],
         });
       }
 
       // Add internal option data
       const positionData = positionsByToken.get(tokenKey)!;
+
+      // Add the current liquidityAtLive to the array
+      const currentLiquidityAtLive = position.liquidityAtLive || 0n;
+      positionData.liquidityValues.push(currentLiquidityAtLive.toString());
+
       positionData.internalOptions.push({
         tickLower: position.tickLower || 0,
         tickUpper: position.tickUpper || 0,
-        liquidity: (position.liquidityAtLive || 0n).toString(),
+        liquidity: currentLiquidityAtLive.toString(),
       });
     }
 
@@ -772,11 +801,12 @@ app.get("/get-positions", async (c) => {
       // Calculate amount for each internal option and sum them
       for (const internalOption of position.internalOptions) {
         try {
+          // Use proper JSBI conversion for tick values
           const sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(
-            internalOption.tickLower
+            Number(internalOption.tickLower)
           );
           const sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(
-            internalOption.tickUpper
+            Number(internalOption.tickUpper)
           );
           const liquidity = JSBI.BigInt(internalOption.liquidity);
 
@@ -797,6 +827,7 @@ app.get("/get-positions", async (c) => {
             );
           }
 
+          // Properly handle JSBI addition
           totalAmount = JSBI.add(totalAmount, optionAmount);
         } catch (error) {
           console.error(
@@ -806,7 +837,7 @@ app.get("/get-positions", async (c) => {
         }
       }
 
-      // Update the position with the calculated amount
+      // Update the position with the calculated amount - convert JSBI to string
       position.amount = totalAmount.toString();
     }
 
@@ -822,46 +853,98 @@ app.get("/get-positions", async (c) => {
       })
     );
 
-    // Make batch requests to profit calculation API
+    // Helper function to fetch profit with timeout
+    const fetchWithTimeout = async (payload) => {
+      // Create an abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), apiTimeout);
+
+      try {
+        const response = await fetch(ratesApiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+          tokenId: payload.tokenId,
+          market: payload.market,
+          profit: data.profit || "0",
+          exerciseParams: data.exerciseParams || null, // Include exerciseParams from API response
+        };
+      } catch (error) {
+        clearTimeout(timeoutId);
+        console.error(
+          `Error fetching profit for token ${payload.tokenId}:`,
+          error
+        );
+
+        // Check if it's a timeout error
+        if (error.name === "AbortError") {
+          console.error(`Request timed out after ${apiTimeout}ms`);
+        }
+
+        return {
+          tokenId: payload.tokenId,
+          market: payload.market,
+          profit: "0",
+          exerciseParams: null,
+        };
+      }
+    };
+
+    // Make batch requests to profit calculation API with retry logic
     const profitResults = await Promise.all(
       profitRequests.map(async (payload) => {
-        try {
-          const response = await fetch(ratesApiUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        // Try up to 3 times with exponential backoff
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return await fetchWithTimeout(payload);
+          } catch (error) {
+            if (attempt < 2) {
+              // Wait with exponential backoff before retrying (500ms, 1500ms)
+              const delay = Math.pow(3, attempt) * 500;
+              console.log(
+                `Retrying profit calculation for token ${
+                  payload.tokenId
+                } after ${delay}ms (attempt ${attempt + 1})`
+              );
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            } else {
+              // Return default value after all retries failed
+              console.error(
+                `All retry attempts failed for token ${payload.tokenId}`
+              );
+              return {
+                tokenId: payload.tokenId,
+                market: payload.market,
+                profit: "0",
+                exerciseParams: null,
+              };
+            }
           }
-
-          const data = await response.json();
-          return {
-            tokenId: payload.tokenId,
-            market: payload.market,
-            profit: data.profit || "0",
-          };
-        } catch (error) {
-          console.error(
-            `Error fetching profit for token ${payload.tokenId}:`,
-            error
-          );
-          return {
-            tokenId: payload.tokenId,
-            market: payload.market,
-            profit: "0",
-          };
         }
       })
     );
 
-    // Create profit lookup map
+    // Create profit lookup maps
     const profitByToken = new Map<string, string>();
+    const exerciseParamsByToken = new Map<string, any>();
+
     for (const result of profitResults) {
-      profitByToken.set(`${result.tokenId}-${result.market}`, result.profit);
+      const key = `${result.tokenId}-${result.market}`;
+      profitByToken.set(key, result.profit);
+      exerciseParamsByToken.set(key, result.exerciseParams);
     }
 
     // Format final response
@@ -875,6 +958,8 @@ app.get("/get-positions", async (c) => {
         expiry: position.expiry,
         paid: position.paid,
         amount: position.amount,
+        liquidityValues: position.liquidityValues,
+        exerciseParams: exerciseParamsByToken.get(tokenKey) || null,
       })
     );
 
