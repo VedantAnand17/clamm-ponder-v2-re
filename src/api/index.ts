@@ -670,6 +670,7 @@ app.get("/get-positions", async (c) => {
         liquidityAtLive: schema.internal_options.liquidityAtLive,
         index: schema.internal_options.index,
         pool: schema.internal_options.pool,
+        createdAt: schema.erc721_token.createdAt,
       })
       .from(schema.erc721_token)
       .innerJoin(
@@ -741,6 +742,7 @@ app.get("/get-positions", async (c) => {
           tickUpper: number;
           liquidity: string;
         }[];
+        createdAt: number;
       }
     >();
 
@@ -764,6 +766,7 @@ app.get("/get-positions", async (c) => {
           amount: "0", // Will calculate this after collecting all internal options
           liquidityValues: [], // Will store all liquidityAtLive values
           internalOptions: [],
+          createdAt: position.createdAt || 0,
         });
       }
 
@@ -958,6 +961,7 @@ app.get("/get-positions", async (c) => {
         isCall: position.isCall,
         value: valueByToken.get(tokenKey) || "0",
         expiry: position.expiry,
+        createdAt: position.createdAt,
         paid: position.paid,
         amount: position.amount,
         liquidityValues: position.liquidityValues,
