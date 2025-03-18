@@ -855,7 +855,7 @@ app.get("/get-positions", async (c) => {
       })
     );
 
-    // Helper function to fetch profit with timeout
+    // Helper function to fetch value with timeout
     const fetchWithTimeout = async (payload) => {
       // Create an abort controller for timeout
       const controller = new AbortController();
@@ -881,13 +881,13 @@ app.get("/get-positions", async (c) => {
         return {
           tokenId: payload.tokenId,
           market: payload.market,
-          profit: data.profit || "0",
+          value: data.value || "0",
           exerciseParams: data.exerciseParams || null, // Include exerciseParams from API response
         };
       } catch (error) {
         clearTimeout(timeoutId);
         console.error(
-          `Error fetching profit for token ${payload.tokenId}:`,
+          `Error fetching value for token ${payload.tokenId}:`,
           error
         );
 
@@ -899,14 +899,14 @@ app.get("/get-positions", async (c) => {
         return {
           tokenId: payload.tokenId,
           market: payload.market,
-          profit: "0",
+          value: "0",
           exerciseParams: null,
         };
       }
     };
 
-    // Make batch requests to profit calculation API with retry logic
-    const profitResults = await Promise.all(
+    // Make batch requests to value calculation API with retry logic
+    const valueResults = await Promise.all(
       profitRequests.map(async (payload) => {
         // Try up to 3 times with exponential backoff
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -917,7 +917,7 @@ app.get("/get-positions", async (c) => {
               // Wait with exponential backoff before retrying (500ms, 1500ms)
               const delay = Math.pow(3, attempt) * 500;
               console.log(
-                `Retrying profit calculation for token ${
+                `Retrying value calculation for token ${
                   payload.tokenId
                 } after ${delay}ms (attempt ${attempt + 1})`
               );
@@ -930,7 +930,7 @@ app.get("/get-positions", async (c) => {
               return {
                 tokenId: payload.tokenId,
                 market: payload.market,
-                profit: "0",
+                value: "0",
                 exerciseParams: null,
               };
             }
@@ -939,13 +939,13 @@ app.get("/get-positions", async (c) => {
       })
     );
 
-    // Create profit lookup maps
-    const profitByToken = new Map<string, string>();
+    // Create value lookup maps
+    const valueByToken = new Map<string, string>();
     const exerciseParamsByToken = new Map<string, any>();
 
-    for (const result of profitResults) {
+    for (const result of valueResults) {
       const key = `${result.tokenId}-${result.market}`;
-      profitByToken.set(key, result.profit);
+      valueByToken.set(key, result.value);
       exerciseParamsByToken.set(key, result.exerciseParams);
     }
 
@@ -956,7 +956,7 @@ app.get("/get-positions", async (c) => {
         callAsset: position.callAsset,
         putAsset: position.putAsset,
         isCall: position.isCall,
-        profit: profitByToken.get(tokenKey) || "0",
+        value: valueByToken.get(tokenKey) || "0",
         expiry: position.expiry,
         paid: position.paid,
         amount: position.amount,
