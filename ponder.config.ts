@@ -9,6 +9,7 @@ import { PositionManagerABI } from "./abis/PositionManagerABI";
 import { LiquidityHandlerABI } from "./abis/LiquidityHandlerABI";
 import { OptionPricingV2ABI } from "./abis/OptionPricingV2ABI";
 import { FeeStrategyV2ABI } from "./abis/FeeStrategyV2ABI";
+import { AutoExerciseABI } from "./abis/AutoExerciseABI";
 
 export default createConfig({
   ordering: "multichain",
@@ -110,6 +111,15 @@ export default createConfig({
         tenderly: {
           address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
           startBlock: 27488039,
+        },
+      },
+    },
+    AutoExercise: {
+      abi: AutoExerciseABI,
+      network: {
+        tenderly: {
+          address: ["0xD70f40BEAF7a6920269e337fb58456143197b22E"],
+          startBlock: 27488478,
         },
       },
     },

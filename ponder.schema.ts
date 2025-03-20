@@ -968,3 +968,27 @@ export const feeStrategyToOptionMarketRelation_feeStrategy = relations(
     }),
   })
 );
+
+export const autoExerciseEvents = onchainTable(
+  "autoExerciseEvents",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    autoExercise: t.hex().notNull(),
+    optionMarket: t.hex().notNull(),
+    tokenId: t.bigint().notNull(),
+    owner: t.hex().notNull(),
+    timestamp: t.integer(),
+    asset: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [
+        table.chainId,
+        table.autoExercise,
+        table.optionMarket,
+        table.tokenId,
+      ],
+    }),
+  })
+);

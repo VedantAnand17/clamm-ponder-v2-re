@@ -1,7 +1,7 @@
 import { db } from "ponder:api";
 import schema from "ponder:schema";
 import { Hono } from "hono";
-import { client, graphql, eq, and, lt, gt } from "ponder";
+import { client, graphql, eq, and, lt, gt, desc } from "ponder";
 import { getAddress } from "viem";
 import { getSpecificStrategy, getAllStrategies } from "../../strategies";
 import JSBI from "jsbi";
@@ -975,6 +975,88 @@ app.get("/get-positions", async (c) => {
     return c.json(
       {
         error: "Failed to fetch positions",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
+});
+
+app.get("/get-ivs", async (c) => {
+  const marketAddress = c.req.query("market");
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam) : 10;
+
+  // Validate input parameters
+  if (!marketAddress) {
+    return c.json({ error: "Market address parameter is required" }, 400);
+  }
+
+  if (isNaN(limit) || limit <= 0) {
+    return c.json({ error: "Limit must be a positive integer" }, 400);
+  }
+
+  try {
+    // Validate and normalize the market address
+    const formattedMarketAddress = getAddress(marketAddress);
+
+    // First, get the optionPricing address from the option market
+    const marketData = await db
+      .select({
+        optionPricing: schema.option_markets.optionPricing,
+        chainId: schema.option_markets.chainId,
+      })
+      .from(schema.option_markets)
+      .where(
+        eq(
+          schema.option_markets.address,
+          formattedMarketAddress as `0x${string}`
+        )
+      )
+      .limit(1);
+
+    if (marketData.length === 0) {
+      return c.json({ error: "Option market not found" }, 404);
+    }
+
+    const market = marketData[0];
+    // Ensure we have the required data
+    if (!market || !market.optionPricing || !market.chainId) {
+      return c.json({ error: "Option market data is incomplete" }, 404);
+    }
+
+    const optionPricing = market.optionPricing;
+    const chainId = market.chainId;
+
+    // Fetch IV updates from IvUpdateEvents table
+    const ivUpdates = await db
+      .select({
+        timestamp: schema.IvUpdateEvents.timestamp,
+        ttlIV: schema.IvUpdateEvents.ttlIV,
+      })
+      .from(schema.IvUpdateEvents)
+      .where(
+        and(
+          eq(
+            schema.IvUpdateEvents.optionPricing,
+            optionPricing as `0x${string}`
+          ),
+          eq(schema.IvUpdateEvents.chainId, chainId)
+        )
+      )
+      .orderBy(desc(schema.IvUpdateEvents.timestamp))
+      .limit(limit);
+
+    return c.json({
+      market: formattedMarketAddress,
+      optionPricing,
+      ivUpdates,
+    });
+  } catch (error) {
+    console.error("Error in get-ivs endpoint:", error);
+    return c.json(
+      {
+        error: "Failed to fetch IV updates",
         message: error instanceof Error ? error.message : String(error),
       },
       500
