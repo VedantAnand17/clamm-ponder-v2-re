@@ -100,7 +100,7 @@ export default createConfig({
       abi: OptionPricingV2ABI,
       network: {
         tenderly: {
-          address: ["0xAc9011Fdb3B07B9386D1deB2eA861350e1fb6C86"],
+          address: ["0x1b1ed6018C7ea7703ade42D533450629b7Fa1060"],
           startBlock: 27488039,
         },
       },
