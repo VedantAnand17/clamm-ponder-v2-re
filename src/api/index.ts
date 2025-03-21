@@ -824,7 +824,7 @@ app.get("/get-positions", async (c) => {
               true // round up
             );
           } else {
-            optionAmount = SqrtPriceMath.getAmount1Delta(
+            optionAmount = SqrtPriceMath.getAmount0Delta(
               sqrtRatioAX96,
               sqrtRatioBX96,
               liquidity,
