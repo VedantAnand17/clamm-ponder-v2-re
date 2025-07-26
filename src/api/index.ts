@@ -639,7 +639,7 @@ app.get("/get-positions", async (c) => {
 
   // Validate input parameters
   if (!address) {
-    return c.json({ error: "Address parameter is required" }, 400);
+    return c.json({ error: "Address parameter is required", ratesApiUrl }, 400);
   }
 
   if (!chainId) {

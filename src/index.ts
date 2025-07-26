@@ -523,9 +523,30 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
   });
 });
 
+// Test with OwnershipTransferred event (we know this exists in the same transaction)
+ponder.on("OptionMarket:OwnershipTransferred", async ({ event, context }) => {
+  console.log("🔥 OWNERSHIP TRANSFERRED EVENT DETECTED!");
+  console.log("Previous owner:", event.args.previousOwner);
+  console.log("New owner:", event.args.newOwner);
+});
+
+// Comment out problematic LogOptionsMarketInitialized for now
+// ponder.on("OptionMarket:LogOptionsMarketInitialized", async ({ event, context }) => {
+//   console.log("🚀 EVENT DETECTED!");
+// });
+
+// Original complex handler (commented out for testing)
+/*
 ponder.on(
   "OptionMarket:LogOptionsMarketInitialized",
   async ({ event, context }) => {
+    console.log("🚀 STARTED LogOptionsMarketInitialized event processing!", {
+      address: event.log.address,
+      blockNumber: event.block.number,
+      txHash: event.transaction.hash,
+      args: event.args
+    });
+    
     const chainId = Number(context.network.chainId);
 
     await context.db
@@ -536,8 +557,11 @@ ponder.on(
       })
       .onConflictDoNothing();
 
-    const [token0, token1, fee, tickSpacing, currentFee] =
-      await context.client.multicall({
+    // Try multicall, but don't let it prevent essential data from being saved
+    let token0: any, token1: any, fee: any, tickSpacing: any, currentFee: any;
+    
+    try {
+      const results = await context.client.multicall({
         contracts: [
           {
             abi: UniswapV3PoolABI,
@@ -567,6 +591,17 @@ ponder.on(
           },
         ],
       });
+      [token0, token1, fee, tickSpacing, currentFee] = results;
+      console.log("✅ Multicall successful");
+    } catch (error: any) {
+      console.log("⚠️ Multicall failed, using fallback values:", error?.message);
+      // Use event args as fallbacks for essential data
+      token0 = { result: event.args.callAsset, status: "success" };
+      token1 = { result: event.args.putAsset, status: "success" };  
+      fee = { result: 3000, status: "success" };
+      tickSpacing = { result: 60, status: "success" };
+      currentFee = { result: 0n, status: "success" };
+    }
 
     await context.db.insert(feeStrategyToOptionMarkets).values({
       feeStrategy: event.args.dpFee,
@@ -595,15 +630,25 @@ ponder.on(
         callAsset: event.args.callAsset,
         putAsset: event.args.putAsset,
       });
-    } catch (error) {
-      console.error(
-        "Error processing LogOptionsMarketInitialized event:",
-        error
-      );
-      throw error;
-    }
-  }
-);
+      
+      console.log("🎉 SUCCESSFULLY created option_markets entry!", {
+        address: event.log.address,
+        chainId,
+        callAsset: event.args.callAsset,
+        putAsset: event.args.putAsset
+      });
+    } catch (error: any) {
+      console.error("❌ CRITICAL ERROR in LogOptionsMarketInitialized:", {
+        error: error?.message || error,
+        address: event.log.address,
+        blockNumber: event.block.number,
+        args: event.args
+      });
+             throw error;
+     }
+   }
+ );
+ */
 
 ponder.on("OptionMarket:LogUpdateAddress", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
@@ -630,13 +675,21 @@ ponder.on("OptionMarket:LogUpdateAddress", async ({ event, context }) => {
 ponder.on("feeStrategy:FeeUpdate", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
 
+  // Use upsert instead of update to handle case where record doesn't exist yet
   await context.db
-    .update(feeStrategyToOptionMarkets, {
+    .insert(feeStrategyToOptionMarkets)
+    .values({
       chainId,
       optionMarket: event.args.optionMarket,
       feeStrategy: event.log.address,
+      currentFee: event.args.feePercentages,
     })
-    .set({ currentFee: event.args.feePercentages });
+    .onConflictDoUpdate({
+      target: ["chainId", "optionMarket", "feeStrategy"],
+      set: {
+        currentFee: event.args.feePercentages,
+      },
+    });
 });
 
 ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {

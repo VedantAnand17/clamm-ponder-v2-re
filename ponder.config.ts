@@ -1,131 +1,154 @@
-import { createConfig, mergeAbis, factory } from "ponder";
-import { http, parseAbiItem } from "viem";
-import { Automatorv21ABI } from "./abis/Automatorv21ABI";
+import { createConfig, mergeAbis } from "ponder";
+import { http } from "viem";
+
+import { Automatorv21ABI } from "./abis/Automatorv21ABI";  
 import { Automatorv11ABI } from "./abis/Automatorv11ABI";
-import { UniswapV3PoolABI } from "./abis/UniswapV3PoolABI";
-import { erc20ABI } from "./abis/erc20ABI";
 import { OptionMarketABI } from "./abis/OptionMarketABI";
-import { PositionManagerABI } from "./abis/PositionManagerABI";
+import { PositionManagerABI } from "./abis/PositionManagerABI";  
 import { LiquidityHandlerABI } from "./abis/LiquidityHandlerABI";
+import { TVLPreviewABI } from "./abis/TVLPreviewABI";
 import { OptionPricingV2ABI } from "./abis/OptionPricingV2ABI";
 import { FeeStrategyV2ABI } from "./abis/FeeStrategyV2ABI";
 import { AutoExerciseABI } from "./abis/AutoExerciseABI";
 
 export default createConfig({
-  ordering: "multichain",
   networks: {
-    // arbitrum: {
-    //   chainId: 42161,
-    //   transport: http(process.env.PONDER_RPC_URL_42161),
-    //   maxRequestsPerSecond: 300,
-    // },
-    tenderly: {
-      chainId: 8450,
-      transport: http(process.env.PONDER_RPC_URL_8450),
-      maxRequestsPerSecond: 300,
+    monad: {
+      chainId: 10143,
+      transport: http(process.env.PONDER_RPC_URL_MONAD),
     },
   },
-  // blocks: {
-  //   // Automator01APY: {
-  //   //   network: "arbitrum",
-  //   //   startBlock: 26497566,
-  //   //   interval: 10000,
-  //   // },
-  //   // PoolTVLandOpenInterest: {
-  //   //   network: "tenderly",
-  //   //   startBlock: 26497566,
-  //   //   interval: 100,
-  //   // },
-  //   AutomatorAssets: {
-  //     network: "arbitrum",
-  //     startBlock: 310066571,
-  //     interval: 10000,
-  //   },
-  //   tvlInfo: {
-  //     network: "tenderly",
-  //     startBlock: 26498072,
-  //     interval: 1,
-  //   },
-  // },
   contracts: {
     Automatorv21: {
       network: {
-        tenderly: {
+        monad: {
           address: [
-            "0xcC83bfa612270e89d4f635d0D82787636499ba30",
-            "0x882376e99ad0F6dc9B91A7f982e26A5EA1061bF4",
+            "0x477Abf43f0E6899ACdCb9D17474627E54B4C1946",
+            "0x0d83AE1933b21bb96166f7570C18576E3A8a792B",
           ],
-          startBlock: 27488039,
+          startBlock: 25150000, // Lowered to capture LogOptionsMarketInitialized from block 25150193
         },
       },
       abi: mergeAbis([Automatorv21ABI, Automatorv11ABI]),
     },
     OptionMarket: {
       network: {
-        tenderly: {
-          address: ["0x1D56d9d8885988cAA4481B4432f9EA1FE29CAEcD"],
-          startBlock: 27488039,
+        monad: {
+          address: ["0x8fCc18a604C85475BE9DF68d6C106a1ca26A73cc"],
+          startBlock: 25150000, // Lowered to capture LogOptionsMarketInitialized from block 25150193
         },
       },
       abi: OptionMarketABI,
     },
     PositionManager: {
       network: {
-        tenderly: {
-          address: ["0x8be7bC2FE54fFd5B977725beB72946dDF6b6302A"],
-          startBlock: 27488039,
+        monad: {
+          address: ["0x3cDF18a1249c31d1dc9ac8f2FD5Ba3ECA8761753"],
+          startBlock: 25150000, // Lowered to capture deployment events
         },
       },
       abi: PositionManagerABI,
     },
     LiquidityHandler: {
       network: {
-        tenderly: {
-          address: ["0xa1A46BDe565A7f083c8d0a596e8A4fcd5571E9a6"],
-          startBlock: 27488039,
+        monad: {
+          address: ["0x680b4678Aff708535BA641A6Dd36B4dFfbF159E2"],
+          startBlock: 25150000, // Lowered to capture deployment events
         },
       },
       abi: LiquidityHandlerABI,
     },
     primePool: {
-      abi: UniswapV3PoolABI,
       network: {
-        tenderly: {
-          address: ["0xd0b53D9277642d899DF5C87A3966A349A798F224"],
-          startBlock: 27488039,
+        monad: {
+          address: ["0x60a336798063396d8f0f398411bad02a762735c4"],
+          startBlock: 25150000, // Lowered to capture deployment events
         },
       },
+      abi: [
+        {
+          "inputs": [],
+          "name": "slot0",
+          "outputs": [
+            { "internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160" },
+            { "internalType": "int24", "name": "tick", "type": "int24" },
+            { "internalType": "uint16", "name": "observationIndex", "type": "uint16" },
+            { "internalType": "uint16", "name": "observationCardinality", "type": "uint16" },
+            { "internalType": "uint16", "name": "observationCardinalityNext", "type": "uint16" },
+            { "internalType": "uint8", "name": "feeProtocol", "type": "uint8" },
+            { "internalType": "bool", "name": "unlocked", "type": "bool" }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        }
+      ]
     },
     optionPricing: {
-      abi: OptionPricingV2ABI,
       network: {
-        tenderly: {
-          address: ["0x1b1ed6018C7ea7703ade42D533450629b7Fa1060"],
-          startBlock: 27488039,
+        monad: {
+          address: ["0xd15A0dfBa2AE002bB35982489e90A466dA0DD5dB"],
+          startBlock: 25150000, // Lowered to capture deployment events
         },
       },
+      abi: OptionPricingV2ABI,
     },
     feeStrategy: {
-      abi: FeeStrategyV2ABI,
       network: {
-        tenderly: {
-          address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
-          startBlock: 27488039,
+        monad: {
+          address: ["0xFB75d6F7B0F0791ceb19106aCaB593651Db7564a"],
+          startBlock: 25150000, // Lowered to capture deployment events
         },
       },
+      abi: FeeStrategyV2ABI,
     },
     AutoExercise: {
-      abi: AutoExerciseABI,
       network: {
-        tenderly: {
-          address: ["0xD70f40BEAF7a6920269e337fb58456143197b22E"],
-          startBlock: 27488478,
+        monad: {
+          address: ["0x9e6Da3840f2FE96814c823515D6D0A2f8d01651e"],
+          startBlock: 25150000, // Lowered to capture deployment events
         },
       },
+      abi: AutoExerciseABI,
     },
-    ERC20: {
-      network: "tenderly",
-      abi: erc20ABI,
+    WBTC: {
+      network: {
+        monad: {
+          address: ["0xcf5a6076cfa32686c0df13abada2b40dec133f1d"],
+          startBlock: 25150000, // Lowered to capture deployment events
+        },
+      },
+      abi: [
+        {
+          "anonymous": false,
+          "inputs": [
+            { "indexed": true, "internalType": "address", "name": "from", "type": "address" },
+            { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
+            { "indexed": false, "internalType": "uint256", "name": "value", "type": "uint256" }
+          ],
+          "name": "Transfer",
+          "type": "event"
+        }
+      ]
+    },
+    USDC: {
+      network: {
+        monad: {
+          address: ["0xf817257fed379853cde0fa4f97ab987181b1e5ea"],
+          startBlock: 25150000, // Lowered to capture deployment events
+        },
+      },
+      abi: [
+        {
+          "anonymous": false,
+          "inputs": [
+            { "indexed": true, "internalType": "address", "name": "from", "type": "address" },
+            { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
+            { "indexed": false, "internalType": "uint256", "name": "value", "type": "uint256" }
+          ],
+          "name": "Transfer",
+          "type": "event"
+        }
+      ]
     },
   },
 });

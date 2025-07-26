@@ -13,6 +13,20 @@ export interface ChainData {
 }
 
 export const chainData: Record<number, ChainData> = {
+  10143: {
+    data: {
+      strategies: {
+        "0x477Abf43f0E6899ACdCb9D17474627E54B4C1946": {
+          name: "Monad ETH-USDC Covered Call",
+          description: "Monad testnet ETH-USDC covered call strategy",
+        },
+        "0x0d83AE1933b21bb96166f7570C18576E3A8a792B": {
+          name: "Monad ETH-USDC Put Selling",
+          description: "Monad testnet ETH-USDC put selling strategy",
+        },
+      },
+    },
+  },
   42161: {
     data: {
       strategies: {

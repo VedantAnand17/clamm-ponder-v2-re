@@ -15,7 +15,22 @@ export interface PoolConfig {
   }
   
   export const POOL_CONFIGS: Record<string, PoolConfig> = {
-"ARBITRUM_WETH_USDC": {
+"MONAD_WBTC_USDC": {
+      address: "0x60a336798063396d8f0f398411bad02a762735c4", // TODO: Update with actual Monad pool address
+      chainId: 10143, // Monad Testnet
+      isToken1Volatile: false, // is WETH token1?
+      token0: {
+        address: "0xcf5a6076cfa32686c0df13abada2b40dec133f1d", // TODO: Update with WBTC on Monad
+        decimals: 8,
+        symbol: "WBTC"
+      },
+      token1: {
+        address: "0xf817257fed379853cde0fa4f97ab987181b1e5ea", // TODO: Update with USDC on Monad
+        decimals: 6,
+        symbol: "USDC"
+      }
+    },
+    "ARBITRUM_WETH_USDC": {
       address: "0xc6962004f452be9203591991d15f6b388e09e8d0",
       chainId: 42161, // Arbitrum One
       isToken1Volatile: false, // is WETH token1?
@@ -26,6 +41,21 @@ export interface PoolConfig {
       },
       token1: {
         address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", // USDC on Arbitrum
+        decimals: 6,
+        symbol: "USDC"
+      }
+    },
+    "MONAD_POOL_1": {
+      address: "0x60a336798063396d8f0f398411bad02a762735c4".toLowerCase(), // TODO: Update with Monad address
+      chainId: 10143, // Monad Testnet
+      isToken1Volatile: false, // is WETH token1?
+      token0: {
+        address: "0xcf5a6076cfa32686c0df13abada2b40dec133f1d", // TODO: Update with WBTC on Monad
+        decimals: 8,
+        symbol: "WBTC"
+      },
+      token1: {
+        address: "0xf817257fed379853cde0fa4f97ab987181b1e5ea", // TODO: Update with USDC on Monad
         decimals: 6,
         symbol: "USDC"
       }
