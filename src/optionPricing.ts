@@ -9,7 +9,8 @@ import {
 import { bigint, client, index, replaceBigInts } from "ponder";
 import { UniswapV3PoolABI } from "../abis/UniswapV3PoolABI";
 
-ponder.on("optionPricing:IVsUpdated", async ({ event, context }) => {
+ponder.on("optionPricing:UpdatedIVs", async ({ event, context }) => {
+  const args = event.args as { ttls: readonly bigint[]; ttlIVs: readonly bigint[] };
   const chainId = Number(context.network.chainId);
 
   await context.db.insert(IvUpdateEvents).values(
@@ -17,9 +18,9 @@ ponder.on("optionPricing:IVsUpdated", async ({ event, context }) => {
       {
         chainId,
         optionPricing: event.log.address,
-        ttlIV: event.args.ttls.map((ttl, index) => ({
+        ttlIV: args.ttls.map((ttl, index) => ({
           ttl: Number(ttl),
-          IV: event.args.ivs[index] ?? 0n,
+          IV: args.ttlIVs[index] ?? 0n,
         })),
         timestamp: Number(event.block.timestamp),
       },
@@ -34,9 +35,9 @@ ponder.on("optionPricing:IVsUpdated", async ({ event, context }) => {
         {
           chainId,
           optionPricing: event.log.address,
-          ttlIV: event.args.ttls.map((ttl, index) => ({
+          ttlIV: args.ttls.map((ttl, index) => ({
             ttl: Number(ttl),
-            IV: event.args.ivs[index] ?? 0n,
+            IV: args.ttlIVs[index] ?? 0n,
           })),
         },
         String
@@ -45,9 +46,9 @@ ponder.on("optionPricing:IVsUpdated", async ({ event, context }) => {
     .onConflictDoUpdate(
       replaceBigInts(
         {
-          ttlIV: event.args.ttls.map((ttl, index) => ({
+          ttlIV: args.ttls.map((ttl, index) => ({
             ttl: Number(ttl),
-            IV: event.args.ivs[index] ?? 0n,
+            IV: args.ttlIVs[index] ?? 0n,
           })),
         },
         String

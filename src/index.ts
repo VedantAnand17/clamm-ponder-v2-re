@@ -523,20 +523,6 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
   });
 });
 
-// Test with OwnershipTransferred event (we know this exists in the same transaction)
-ponder.on("OptionMarket:OwnershipTransferred", async ({ event, context }) => {
-  console.log("🔥 OWNERSHIP TRANSFERRED EVENT DETECTED!");
-  console.log("Previous owner:", event.args.previousOwner);
-  console.log("New owner:", event.args.newOwner);
-});
-
-// Comment out problematic LogOptionsMarketInitialized for now
-// ponder.on("OptionMarket:LogOptionsMarketInitialized", async ({ event, context }) => {
-//   console.log("🚀 EVENT DETECTED!");
-// });
-
-// Original complex handler (commented out for testing)
-/*
 ponder.on(
   "OptionMarket:LogOptionsMarketInitialized",
   async ({ event, context }) => {
@@ -613,10 +599,10 @@ ponder.on(
     await context.db.insert(primePool).values({
       chainId,
       primePool: event.args.primePool,
-      token0: token0.result,
-      token1: token1.result,
-      fee: fee.result,
-      tickSpacing: tickSpacing.result,
+      token0: (token0?.result || event.args.callAsset || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+      token1: (token1?.result || event.args.putAsset || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+      fee: fee?.result || 3000,
+      tickSpacing: tickSpacing?.result || 60,
       optionMarket: event.log.address,
     });
 
@@ -648,7 +634,6 @@ ponder.on(
      }
    }
  );
- */
 
 ponder.on("OptionMarket:LogUpdateAddress", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
@@ -685,12 +670,10 @@ ponder.on("feeStrategy:FeeUpdate", async ({ event, context }) => {
       currentFee: event.args.feePercentages,
     })
     .onConflictDoUpdate({
-      target: [
-        feeStrategyToOptionMarkets.chainId,
-        feeStrategyToOptionMarkets.optionMarket,
-        feeStrategyToOptionMarkets.feeStrategy,
-      ],
-      set: { currentFee: event.args.feePercentages },
+      target: [feeStrategyToOptionMarkets.chainId, feeStrategyToOptionMarkets.optionMarket, feeStrategyToOptionMarkets.feeStrategy],
+      set: {
+        currentFee: event.args.feePercentages,
+      },
     });
 });
 
