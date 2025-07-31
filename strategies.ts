@@ -30,39 +30,53 @@ export const chainData: Record<number, ChainData> = {
   42161: {
     data: {
       strategies: {
-        "0x01e371c500c49bea2fa985334f46a8dc906253ea": {
-          name: "ETH-USDC Covered Call",
-          description: "Ethereum mainnet ETH-USDC covered call strategy",
+        "0x1ab74D9d5cf6cbC8Ec83Be9842e486DD8F80770D": {
+          name: "Monad ETH-USDC Covered Call",
+          description: "Monad testnet ETH-USDC covered call strategy",
+        },
+        "0x0d83AE1933b21bb96166f7570C18576E3A8a792B": {
+          name: "Monad ETH-USDC Put Selling",
+          description: "Monad testnet ETH-USDC put selling strategy",
         },
       },
     },
   },
-  137: {
-    data: {
-      strategies: {
-        "0x5678000000000000000000000000000000000000": {
-          name: "MATIC-USDC Covered Call",
-          description: "Polygon MATIC-USDC covered call strategy",
-        },
-      },
-    },
-  },
-  1: {
-    data: {
-      strategies: {
-        "0x1234000000000000000000000000000000000000": {
-          name: "ETH-USDC Put Selling",
-          description: "Ethereum mainnet ETH-USDC put selling strategy",
-        },
-        // Note: In the original data, this address is the same as the one above
-        // In a real implementation, you would want unique addresses
-        "0x9876000000000000000000000000000000000000": {
-          name: "ETH-USDC Bull Call Spread",
-          description: "Ethereum mainnet ETH-USDC bull call spread strategy",
-        },
-      },
-    },
-  },
+  // 42161: {
+  //   data: {
+  //     strategies: {
+  //       "0x01e371c500c49bea2fa985334f46a8dc906253ea": {
+  //         name: "ETH-USDC Covered Call",
+  //         description: "Ethereum mainnet ETH-USDC covered call strategy",
+  //       },
+  //     },
+  //   },
+  // },
+  // 137: {
+  //   data: {
+  //     strategies: {
+  //       "0x5678000000000000000000000000000000000000": {
+  //         name: "MATIC-USDC Covered Call",
+  //         description: "Polygon MATIC-USDC covered call strategy",
+  //       },
+  //     },
+  //   },
+  // },
+  // 1: {
+  //   data: {
+  //     strategies: {
+  //       "0x1234000000000000000000000000000000000000": {
+  //         name: "ETH-USDC Put Selling",
+  //         description: "Ethereum mainnet ETH-USDC put selling strategy",
+  //       },
+  //       // Note: In the original data, this address is the same as the one above
+  //       // In a real implementation, you would want unique addresses
+  //       "0x9876000000000000000000000000000000000000": {
+  //         name: "ETH-USDC Bull Call Spread",
+  //         description: "Ethereum mainnet ETH-USDC bull call spread strategy",
+  //       },
+  //     },
+  //   },
+  // },
 };
 
 // Helper functions for the new data structure

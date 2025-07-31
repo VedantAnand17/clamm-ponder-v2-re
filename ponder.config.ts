@@ -13,20 +13,31 @@ import { AutoExerciseABI } from "./abis/AutoExerciseABI";
 
 export default createConfig({
   networks: {
+    // arbitrum: {
+    //   chainId: 42161,
+    //   transport: http(process.env.PONDER_RPC_URL_42161),
+    //   maxRequestsPerSecond: 300,
+    // },
     monad: {
       chainId: 10143,
       transport: http(process.env.PONDER_RPC_URL_MONAD),
+      maxRequestsPerSecond: 300,
     },
+    // tenderly: {
+    //   chainId: 8450,
+    //   transport: http(process.env.PONDER_RPC_URL_8450),
+    //   maxRequestsPerSecond: 300,
+    // },
   },
   contracts: {
     Automatorv21: {
       network: {
         monad: {
           address: [
-            "0x477Abf43f0E6899ACdCb9D17474627E54B4C1946",
+            "0x1ab74D9d5cf6cbC8Ec83Be9842e486DD8F80770D",
             "0x0d83AE1933b21bb96166f7570C18576E3A8a792B",
           ],
-          startBlock: 25150000, // Lowered to capture LogOptionsMarketInitialized from block 25150193
+          startBlock: 28645200,
         },
       },
       abi: mergeAbis([Automatorv21ABI, Automatorv11ABI]),
@@ -34,8 +45,8 @@ export default createConfig({
     OptionMarket: {
       network: {
         monad: {
-          address: ["0x8fCc18a604C85475BE9DF68d6C106a1ca26A73cc"],
-          startBlock: 25150000, // Lowered to capture LogOptionsMarketInitialized from block 25150193
+          address: ["0x9f7E675B6176b5182e5e2FEf77EA9724530c7a78"],
+          startBlock: 28645200,
         },
       },
       abi: OptionMarketABI,
@@ -43,8 +54,8 @@ export default createConfig({
     PositionManager: {
       network: {
         monad: {
-          address: ["0x3cDF18a1249c31d1dc9ac8f2FD5Ba3ECA8761753"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          address: ["0xDc8130af677035EC5B6887c6d201321DF34B8dd1"],
+          startBlock: 28645200,
         },
       },
       abi: PositionManagerABI,
@@ -52,8 +63,8 @@ export default createConfig({
     LiquidityHandler: {
       network: {
         monad: {
-          address: ["0x680b4678Aff708535BA641A6Dd36B4dFfbF159E2"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          address: ["0x3D2B3BaCCb4C7450B545D291a183AE4011D92A4f"],
+          startBlock: 28645200,
         },
       },
       abi: LiquidityHandlerABI,
@@ -62,7 +73,7 @@ export default createConfig({
       network: {
         monad: {
           address: ["0x60a336798063396d8f0f398411bad02a762735c4"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          startBlock: 28645200,
         },
       },
       abi: [
@@ -86,8 +97,8 @@ export default createConfig({
     optionPricing: {
       network: {
         monad: {
-          address: ["0xd15A0dfBa2AE002bB35982489e90A466dA0DD5dB"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          address: ["0x83648A48EF925392c29e93defc613f4Ce8874cc9"],
+          startBlock: 28645200,
         },
       },
       abi: OptionPricingV2ABI,
@@ -95,8 +106,8 @@ export default createConfig({
     feeStrategy: {
       network: {
         monad: {
-          address: ["0xFB75d6F7B0F0791ceb19106aCaB593651Db7564a"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          address: ["0x643Cc4F61E285fB71F892f410cd2a1fE4490b0Bb"],
+          startBlock: 28645200,
         },
       },
       abi: FeeStrategyV2ABI,
@@ -104,8 +115,8 @@ export default createConfig({
     AutoExercise: {
       network: {
         monad: {
-          address: ["0x9e6Da3840f2FE96814c823515D6D0A2f8d01651e"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          address: ["0xfD2558e57a0575d5477fA80b8aA4a9affC6a48f5"],
+          startBlock: 28645200,
         },
       },
       abi: AutoExerciseABI,
@@ -114,7 +125,7 @@ export default createConfig({
       network: {
         monad: {
           address: ["0xcf5a6076cfa32686c0df13abada2b40dec133f1d"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          startBlock: 28645200, // Lowered to capture deployment events
         },
       },
       abi: [
@@ -134,7 +145,7 @@ export default createConfig({
       network: {
         monad: {
           address: ["0xf817257fed379853cde0fa4f97ab987181b1e5ea"],
-          startBlock: 25150000, // Lowered to capture deployment events
+          startBlock: 28645200, // Lowered to capture deployment events
         },
       },
       abi: [

@@ -679,16 +679,18 @@ ponder.on("feeStrategy:FeeUpdate", async ({ event, context }) => {
   await context.db
     .insert(feeStrategyToOptionMarkets)
     .values({
+      feeStrategy: event.log.address,
       chainId,
       optionMarket: event.args.optionMarket,
-      feeStrategy: event.log.address,
       currentFee: event.args.feePercentages,
     })
     .onConflictDoUpdate({
-      target: ["chainId", "optionMarket", "feeStrategy"],
-      set: {
-        currentFee: event.args.feePercentages,
-      },
+      target: [
+        feeStrategyToOptionMarkets.chainId,
+        feeStrategyToOptionMarkets.optionMarket,
+        feeStrategyToOptionMarkets.feeStrategy,
+      ],
+      set: { currentFee: event.args.feePercentages },
     });
 });
 

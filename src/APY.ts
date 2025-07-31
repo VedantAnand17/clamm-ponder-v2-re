@@ -132,7 +132,7 @@ import { VaultInspectorV2ABI } from "../abis/VaultInspectorV2";
 // }
 // ponder.on("PoolTVLandOpenInterest:block", async ({ event, context }) => {
 //   try {
-//     const pool = "0xd0b53D9277642d899DF5C87A3966A349A798f224";
+//     const pool = "0x60a336798063396d8f0f398411bad02a762735c4";
 
 //     // Get aggregated liquidity by tick ranges
 //     const liquidityByTicks = await getLiquidityByTickRanges(pool);
@@ -163,7 +163,7 @@ import { VaultInspectorV2ABI } from "../abis/VaultInspectorV2";
 
 //     // Only proceed with database insert if we have liquidity data
 //     // await context.db.insert(poolTVLandOpenInterest).values({
-//     //   pool: "0xd0b53D9277642d899DF5C87A3966A349A798F224",
+//     //   pool: "0x60a336798063396d8f0f398411bad02a762735c4",
 //     //   chainId: context.network.chainId,
 //     //   timestamp: Number(event.block.timestamp),
 //     //   token0balance: token0balance,
