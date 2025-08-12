@@ -19,7 +19,8 @@
     "jsbi": "^3.2.5",
     "keccak": "^3.0.4",
     "ponder": "^0.9.23",
-    "viem": "^2.33.0"
+    "viem": "^2.33.0",
+    "pg": "^8.12.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.3.5",
