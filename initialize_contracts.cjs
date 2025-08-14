@@ -1,7 +1,7 @@
 const https = require('https');
 
-const RPC_URL = 'https://testnet-rpc.monad.xyz';
-const OPTION_MARKET = '0x9f7E675B6176b5182e5e2FEf77EA9724530c7a78';
+const RPC_URL = 'https://still-stylish-general.monad-testnet.quiknode.pro/f686122d4301cb46397e299c0454bf12543df274';
+const OPTION_MARKET = '0x18bda3EFe978D982d68cFe688A60faC197dBd7C9';
 
 // This is a rough estimate - you'll need the actual ABI
 const SAMPLE_CALLS = {

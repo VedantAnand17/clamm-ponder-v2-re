@@ -1,6 +1,6 @@
 const https = require('https');
 
-const RPC_URL = 'https://testnet-rpc.monad.xyz';
+const RPC_URL = 'https://still-stylish-general.monad-testnet.quiknode.pro/f686122d4301cb46397e299c0454bf12543df274';
 const CONTRACTS = {
   OptionMarket: '0x9f7E675B6176b5182e5e2FEf77EA9724530c7a78',
   Automatorv21: ['0x477Abf43f0E6899ACdCb9D17474627E54B4C1946', '0x0d83AE1933b21bb96166f7570C18576E3A8a792B'],
