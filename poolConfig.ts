@@ -15,17 +15,17 @@ export interface PoolConfig {
   }
   
   export const POOL_CONFIGS: Record<string, PoolConfig> = {
-    "MONAD_WBTC_USDC": {
-      address: "0x60a336798063396d8f0f398411bad02a762735c4", // TODO: Update with actual Monad pool address
-      chainId: 10143, // Monad Testnet
+    "MONAD_TESTNET_WETH_USDC": {
+      address: "0xe8781Dc41A694c6877449CEFB27cc2C0Ae9D5dbc",
+      chainId: 10143, // Arbitrum One
       isToken1Volatile: false, // is WETH token1?
       token0: {
-        address: "0xcf5a6076cfa32686c0df13abada2b40dec133f1d", // TODO: Update with WBTC on Monad
-        decimals: 8,
-        symbol: "WBTC"
+        address: "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37", // WETH on Monad testnet
+        decimals: 18,
+        symbol: "WETH"
       },
       token1: {
-        address: "0xf817257fed379853cde0fa4f97ab987181b1e5ea", // TODO: Update with USDC on Monad
+        address: "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea", // USDC on Monad testnet
         decimals: 6,
         symbol: "USDC"
       }
