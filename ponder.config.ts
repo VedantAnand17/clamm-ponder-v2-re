@@ -38,7 +38,7 @@ export default createConfig({
             "0x477Abf43f0E6899ACdCb9D17474627E54B4C1946",
             "0x0d83AE1933b21bb96166f7570C18576E3A8a792B",
           ],
-          startBlock: 30914693,
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: [
@@ -53,8 +53,8 @@ export default createConfig({
     OptionMarket: {
       network: {
         monad_testnet: {
-          address: ["0xd851E7f448c8EF6Aea887590B3A8a91979b8F31a"],
-          startBlock: 30914693,
+          address: ["0xA685cC2371d9726f70AF75a8F175cDDb7C779602"],
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0x1D56d9d8885988cAA4481B4432f9EA1FE29CAEcD"],
@@ -66,8 +66,8 @@ export default createConfig({
     PositionManager: {
       network: {
         monad_testnet: {
-          address: ["0xA218378e45A399F0acE0B754532455f7F75c35b9"],
-          startBlock: 30914693,
+          address: ["0xb704D25b195f2BC1789bb05b9926c1C2056B15B3"],
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0x8be7bC2FE54fFd5B977725beB72946dDF6b6302A"],
@@ -79,8 +79,8 @@ export default createConfig({
     LiquidityHandler: {
       network: {
         monad_testnet: {
-          address: ["0x0B3a5F1633B27ab5b487461DC8defE906Ba0ddA8"],
-          startBlock: 30914693,
+          address: ["0x94d5bBa2D3c70b76A05AE142aA24eAA550167b68"],
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0xa1A46BDe565A7f083c8d0a596e8A4fcd5571E9a6"],
@@ -94,7 +94,7 @@ export default createConfig({
       network: {
         monad_testnet: {
           address: ["0xe8781Dc41A694c6877449CEFB27cc2C0Ae9D5dbc"],
-          startBlock: 30914693,
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0xd0b53D9277642d899DF5C87A3966A349A798F224"],
@@ -106,8 +106,8 @@ export default createConfig({
       abi: OptionPricingV2ABI,
       network: {
         monad_testnet: {
-          address: ["0xc7597e8C15b495fb4b4644afAaa35DfF98Be8D55"],
-          startBlock: 30914693,
+          address: ["0x114E50C65E4eFeeb6B6E88A7E480a1B7479F93A1"],
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0x1b1ed6018C7ea7703ade42D533450629b7Fa1060"],
@@ -119,8 +119,8 @@ export default createConfig({
       abi: FeeStrategyV2ABI,
       network: {
         monad_testnet: {
-          address: ["0xe53496b68AA4Ca6E4465Fbb7f81fBb7B8dB77a49"],
-          startBlock: 30914693,
+          address: ["0xE9B9cbAFf7bd9C529fC09607c05CBe279637d72b"],
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0x0DF5faE5a2F67011B8079B31D17c490618aF853e"],
@@ -133,7 +133,7 @@ export default createConfig({
       network: {
         monad_testnet: {
           address: ["0x40F69E05eE74C2983eE050370d686Af4Eec9a1e9"],
-          startBlock: 30914693,
+          startBlock: 30981007,
         },
         // tenderly: {
         //   address: ["0xD70f40BEAF7a6920269e337fb58456143197b22E"],
