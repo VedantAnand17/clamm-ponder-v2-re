@@ -122,7 +122,7 @@ ponder.on("Automatorv21:Rebalance", async ({ event, context }) => {
     context.client as PublicClient,
     event.log.address,
     { asset: strategy_data.asset, counter: strategy_data.counter },
-    { blockNumber: event.block.number }
+    { blockNumber: event.block.number },
   );
 
   await context.db.insert(rebalanceEvent).values({
@@ -162,7 +162,7 @@ ponder.on("Automatorv21:DepositCapSet", async ({ event, context }) => {
   const strategyData = await initialiseStrategyData(
     context.client as PublicClient,
     event.log.address,
-    context.contracts.Automatorv21.abi
+    context.contracts.Automatorv21.abi,
   );
 
   await context.db
@@ -415,7 +415,7 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
     client as PublicClient,
     event.log.address,
     BigInt(tokenId),
-    opTickArrayLen
+    opTickArrayLen,
   );
 
   // Create internal_options records
@@ -436,8 +436,8 @@ ponder.on("OptionMarket:LogMintOption", async ({ event, context }) => {
         tickLower: optionTick.tickLower,
         tickUpper: optionTick.tickUpper,
         strike: optionTick.strike,
-      })
-    )
+      }),
+    ),
   );
 
   await context.db
@@ -490,7 +490,7 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
     client as PublicClient,
     event.log.address,
     event.args.tokenId,
-    opTickArrayLen
+    opTickArrayLen,
   );
 
   await Promise.all(
@@ -507,8 +507,8 @@ ponder.on("OptionMarket:LogExerciseOption", async ({ event, context }) => {
             row.liquidityExercised +
             (row.liquidityAtLive - optionTick.liquidityToUse),
           liquidityAtLive: optionTick.liquidityToUse,
-        }))
-    )
+        })),
+    ),
   );
 
   await context.db.insert(exerciseOptionEvent).values({
@@ -530,9 +530,9 @@ ponder.on(
       address: event.log.address,
       blockNumber: event.block.number,
       txHash: event.transaction.hash,
-      args: event.args
+      args: event.args,
     });
-    
+
     const chainId = Number(context.network.chainId);
 
     await context.db
@@ -545,7 +545,7 @@ ponder.on(
 
     // Try multicall, but don't let it prevent essential data from being saved
     let token0: any, token1: any, fee: any, tickSpacing: any, currentFee: any;
-    
+
     try {
       const results = await context.client.multicall({
         contracts: [
@@ -580,10 +580,13 @@ ponder.on(
       [token0, token1, fee, tickSpacing, currentFee] = results;
       console.log("✅ Multicall successful");
     } catch (error: any) {
-      console.log("⚠️ Multicall failed, using fallback values:", error?.message);
+      console.log(
+        "⚠️ Multicall failed, using fallback values:",
+        error?.message,
+      );
       // Use event args as fallbacks for essential data
       token0 = { result: event.args.callAsset, status: "success" };
-      token1 = { result: event.args.putAsset, status: "success" };  
+      token1 = { result: event.args.putAsset, status: "success" };
       fee = { result: 3000, status: "success" };
       tickSpacing = { result: 60, status: "success" };
       currentFee = { result: 0n, status: "success" };
@@ -599,8 +602,12 @@ ponder.on(
     await context.db.insert(primePool).values({
       chainId,
       primePool: event.args.primePool,
-      token0: (token0?.result || event.args.callAsset || '0x0000000000000000000000000000000000000000') as `0x${string}`,
-      token1: (token1?.result || event.args.putAsset || '0x0000000000000000000000000000000000000000') as `0x${string}`,
+      token0: (token0?.result ||
+        event.args.callAsset ||
+        "0x0000000000000000000000000000000000000000") as `0x${string}`,
+      token1: (token1?.result ||
+        event.args.putAsset ||
+        "0x0000000000000000000000000000000000000000") as `0x${string}`,
       fee: fee?.result || 3000,
       tickSpacing: tickSpacing?.result || 60,
       optionMarket: event.log.address,
@@ -616,24 +623,24 @@ ponder.on(
         callAsset: event.args.callAsset,
         putAsset: event.args.putAsset,
       });
-      
+
       console.log("🎉 SUCCESSFULLY created option_markets entry!", {
         address: event.log.address,
         chainId,
         callAsset: event.args.callAsset,
-        putAsset: event.args.putAsset
+        putAsset: event.args.putAsset,
       });
     } catch (error: any) {
       console.error("❌ CRITICAL ERROR in LogOptionsMarketInitialized:", {
         error: error?.message || error,
         address: event.log.address,
         blockNumber: event.block.number,
-        args: event.args
+        args: event.args,
       });
-             throw error;
-     }
-   }
- );
+      throw error;
+    }
+  },
+);
 
 ponder.on("OptionMarket:LogUpdateAddress", async ({ event, context }) => {
   const chainId = Number(context.network.chainId);
@@ -669,12 +676,9 @@ ponder.on("feeStrategy:FeeUpdate", async ({ event, context }) => {
       optionMarket: event.args.optionMarket,
       currentFee: event.args.feePercentages,
     })
-    .onConflictDoUpdate({
-      target: [feeStrategyToOptionMarkets.chainId, feeStrategyToOptionMarkets.optionMarket, feeStrategyToOptionMarkets.feeStrategy],
-      set: {
-        currentFee: event.args.feePercentages,
-      },
-    });
+    .onConflictDoUpdate((row) => ({
+      currentFee: event.args.feePercentages,
+    }));
 });
 
 ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
@@ -696,7 +700,7 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
     client as PublicClient,
     event.log.address,
     event.args.tokenId,
-    opTickArrayLen
+    opTickArrayLen,
   );
 
   await Promise.all(
@@ -713,8 +717,8 @@ ponder.on("OptionMarket:LogSettleOption", async ({ event, context }) => {
             row.liquiditySettled +
             (row.liquidityAtLive - optionTick.liquidityToUse),
           liquidityAtLive: optionTick.liquidityToUse,
-        }))
-    )
+        })),
+    ),
   );
 
   await context.db.insert(settleOptionEvent).values({
@@ -879,7 +883,7 @@ ponder.on(
       amount: event.args.amount,
       timestamp: Number(event.block.timestamp),
     });
-  }
+  },
 );
 
 ponder.on("LiquidityHandler:LogUpdateHookUse", async ({ event, context }) => {
@@ -921,7 +925,7 @@ ponder.on(
         global_hook_allowed: event.args.globalAllowed,
         default_hook_allowed: event.args.defaultAllowed,
       }));
-  }
+  },
 );
 
 ponder.on("LiquidityHandler:Paused", async ({ event, context }) => {

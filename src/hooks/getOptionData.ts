@@ -41,7 +41,7 @@ export async function getOptionData(
     // Get pool configuration
     const poolAddress = pool.toLowerCase();
     const config = Object.values(POOL_CONFIGS).find(
-      (config) => config.address === poolAddress
+      (config) => config.address.toLowerCase() === poolAddress.toLowerCase()
     );
     if (!config) {
       throw new Error(`Pool config not found for pool ${pool}`);
