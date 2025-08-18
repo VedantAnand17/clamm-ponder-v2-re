@@ -633,7 +633,7 @@ app.get("/get-positions", async (c) => {
     : undefined;
 
   // Get the API URL from environment variables
-  const ratesApiUrl = process.env.RATES_API_URL;
+  const ratesApiUrl = "https://exercisesettlementenginemonad-production.up.railway.app/get-rates";
   // Set timeout for API requests (in milliseconds)
   const apiTimeout = parseInt(process.env.API_TIMEOUT || "60000"); // Default 10 seconds
 
