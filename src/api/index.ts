@@ -157,120 +157,261 @@ app.get("/expiring-options/:minutes?", async (c) => {
 });
 
 app.get("/expired-options", async (c) => {
+  const address = c.req.query("address");
+  const chainIdQuery = c.req.query("chainId");
+  const chainId = chainIdQuery ? parseInt(chainIdQuery) : undefined;
+
+  // Validate input parameters
+  if (!address) {
+    return c.json({ error: "Address parameter is required" }, 400);
+  }
+
+  if (!chainId) {
+    return c.json({ error: "ChainId parameter is required" }, 400);
+  }
+
   const currentTime = Math.floor(Date.now() / 1000);
 
-  const result = await db
-    .select({
-      // Token data
-      tokenId: schema.erc721_token.id,
-      market: schema.erc721_token.market,
-      owner: schema.erc721_token.owner,
-      createdAt: schema.erc721_token.createdAt,
-      expiry: schema.erc721_token.expiry,
-      isCall: schema.erc721_token.isCall,
-      opTickArrayLen: schema.erc721_token.opTickArrayLen,
-      chainId: schema.erc721_token.chainId,
-      // Internal option data
-      handler: schema.internal_options.handler,
-      pool: schema.internal_options.pool,
-      hook: schema.internal_options.hook,
-      liquidityAtOpen: schema.internal_options.liquidityAtOpen,
-      liquidityExercised: schema.internal_options.liquidityExercised,
-      liquiditySettled: schema.internal_options.liquiditySettled,
-      liquidityAtLive: schema.internal_options.liquidityAtLive,
-      strike: schema.internal_options.strike,
-      index: schema.internal_options.index,
-      tickLower: schema.internal_options.tickLower,
-      tickUpper: schema.internal_options.tickUpper,
-    })
-    .from(schema.erc721_token)
-    .innerJoin(
-      schema.internal_options,
-      and(
-        eq(schema.erc721_token.id, schema.internal_options.tokenId),
-        eq(schema.erc721_token.market, schema.internal_options.optionMarket),
-        eq(schema.erc721_token.chainId, schema.internal_options.chainId)
+  try {
+    // Validate and normalize the address
+    const formattedAddress = getAddress(address as string);
+
+    const result = await db
+      .select({
+        // Token data
+        tokenId: schema.erc721_token.id,
+        market: schema.erc721_token.market,
+        owner: schema.erc721_token.owner,
+        createdAt: schema.erc721_token.createdAt,
+        expiry: schema.erc721_token.expiry,
+        isCall: schema.erc721_token.isCall,
+        opTickArrayLen: schema.erc721_token.opTickArrayLen,
+        chainId: schema.erc721_token.chainId,
+        // Market data
+        callAsset: schema.option_markets.callAsset,
+        putAsset: schema.option_markets.putAsset,
+        // Internal option data
+        handler: schema.internal_options.handler,
+        pool: schema.internal_options.pool,
+        hook: schema.internal_options.hook,
+        liquidityAtOpen: schema.internal_options.liquidityAtOpen,
+        liquidityExercised: schema.internal_options.liquidityExercised,
+        liquiditySettled: schema.internal_options.liquiditySettled,
+        liquidityAtLive: schema.internal_options.liquidityAtLive,
+        strike: schema.internal_options.strike,
+        index: schema.internal_options.index,
+        tickLower: schema.internal_options.tickLower,
+        tickUpper: schema.internal_options.tickUpper,
+      })
+      .from(schema.erc721_token)
+      .innerJoin(
+        schema.option_markets,
+        and(
+          eq(schema.erc721_token.market, schema.option_markets.address),
+          eq(schema.erc721_token.chainId, schema.option_markets.chainId)
+        )
       )
-    )
-    .where(lt(schema.erc721_token.expiry, currentTime));
+      .innerJoin(
+        schema.internal_options,
+        and(
+          eq(schema.erc721_token.id, schema.internal_options.tokenId),
+          eq(schema.erc721_token.market, schema.internal_options.optionMarket),
+          eq(schema.erc721_token.chainId, schema.internal_options.chainId)
+        )
+      )
+      .where(
+        and(
+          lt(schema.erc721_token.expiry, currentTime),
+          eq(schema.erc721_token.owner, formattedAddress as `0x${string}`),
+          eq(schema.erc721_token.chainId, chainId)
+        )
+      );
 
-  // Convert BigInt values to strings for serialization
-  const serializedResult = result.map((item) => ({
-    ...item,
-    tokenId: item.tokenId?.toString() || "",
-    liquidityAtOpen: item.liquidityAtOpen?.toString() || "0",
-    liquidityExercised: item.liquidityExercised?.toString() || "0",
-    liquiditySettled: item.liquiditySettled?.toString() || "0",
-    liquidityAtLive: item.liquidityAtLive?.toString() || "0",
-    strike: item.strike?.toString(),
-    index: item.index?.toString(),
-    tickLower: item.tickLower?.toString(),
-    tickUpper: item.tickUpper?.toString(),
-  }));
+    // Convert BigInt values to strings for serialization
+    const serializedResult = result.map((item) => ({
+      ...item,
+      tokenId: item.tokenId?.toString() || "",
+      liquidityAtOpen: item.liquidityAtOpen?.toString() || "0",
+      liquidityExercised: item.liquidityExercised?.toString() || "0",
+      liquiditySettled: item.liquiditySettled?.toString() || "0",
+      liquidityAtLive: item.liquidityAtLive?.toString() || "0",
+      strike: item.strike?.toString(),
+      index: item.index?.toString(),
+      tickLower: item.tickLower?.toString(),
+      tickUpper: item.tickUpper?.toString(),
+    }));
 
-  // Group the results by token, filtering out fully exercised options
-  const groupedOptions = serializedResult.reduce<
-    Record<
-      string,
-      {
-        tokenId: string;
-        market: string;
-        owner: string;
-        createdAt: number;
-        expiry: number;
-        isCall: boolean;
-        opTickArrayLen: number;
-        chainId: number;
-        internalOptions: any[];
+    // Group the results by token, filtering out fully exercised options
+    const groupedOptions = serializedResult.reduce<
+      Record<
+        string,
+        {
+          tokenId: string;
+          market: string;
+          owner: string;
+          createdAt: number;
+          expiry: number;
+          isCall: boolean;
+          opTickArrayLen: number;
+          chainId: number;
+          callAsset?: string;
+          putAsset?: string;
+          internalOptions: any[];
+          amount?: string;
+        }
+      >
+    >((acc, curr) => {
+      // Skip if liquidityAtOpen equals liquidityExercised + Settled (fully closed)
+      // Convert strings back to BigInt for proper comparison
+      const liquidityAtOpenBN = BigInt(curr.liquidityAtOpen || "0");
+      const liquidityExercisedBN = BigInt(curr.liquidityExercised || "0");
+      const liquiditySettledBN = BigInt(curr.liquiditySettled || "0");
+
+      if (liquidityAtOpenBN === liquidityExercisedBN + liquiditySettledBN) {
+        return acc;
       }
-    >
-  >((acc, curr) => {
-    // Skip if liquidityAtOpen equals liquidityExercised + Settled (fully closed)
-    // Convert strings back to BigInt for proper comparison
-    const liquidityAtOpenBN = BigInt(curr.liquidityAtOpen || "0");
-    const liquidityExercisedBN = BigInt(curr.liquidityExercised || "0");
-    const liquiditySettledBN = BigInt(curr.liquiditySettled || "0");
 
-    if (liquidityAtOpenBN === liquidityExercisedBN + liquiditySettledBN) {
-      return acc;
-    }
-
-    const {
-      tokenId,
-      market,
-      owner,
-      createdAt,
-      expiry,
-      isCall,
-      opTickArrayLen,
-      chainId,
-      ...internalOption
-    } = curr;
-
-    if (!acc[tokenId]) {
-      acc[tokenId] = {
+      const {
         tokenId,
-        market: market || "",
-        owner: owner || "",
-        createdAt: createdAt || 0,
-        expiry: expiry || 0,
-        isCall: isCall || false,
-        opTickArrayLen: opTickArrayLen || 0,
-        chainId: chainId || 0,
-        internalOptions: [],
-      };
+        market,
+        owner,
+        createdAt,
+        expiry,
+        isCall,
+        opTickArrayLen,
+        chainId,
+        callAsset,
+        putAsset,
+        ...internalOption
+      } = curr;
+
+      if (!acc[tokenId]) {
+        acc[tokenId] = {
+          tokenId,
+          market: market || "",
+          owner: owner || "",
+          createdAt: createdAt || 0,
+          expiry: expiry || 0,
+          isCall: isCall || false,
+          opTickArrayLen: opTickArrayLen || 0,
+          chainId: chainId || 0,
+          callAsset,
+          putAsset,
+          internalOptions: [],
+          amount: "0",
+        };
+      }
+
+      acc[tokenId]?.internalOptions.push(internalOption);
+      return acc;
+    }, {});
+
+    // Filter out tokens that have no eligible internal options
+    const filteredGroupedOptions = Object.values(groupedOptions).filter(
+      (token) => token.internalOptions.length > 0
+    );
+
+    // Get pool configurations to determine token0 and token1
+    const poolConfigs = await db
+      .select({
+        pool: schema.primePool.primePool,
+        token0: schema.primePool.token0,
+        token1: schema.primePool.token1,
+      })
+      .from(schema.primePool)
+      .where(eq(schema.primePool.chainId, chainId));
+
+    const poolConfigMap = new Map<string, { token0: string; token1: string }>();
+    for (const config of poolConfigs) {
+      if (config.pool && config.token0 && config.token1) {
+        poolConfigMap.set(config.pool, {
+          token0: config.token0,
+          token1: config.token1,
+        });
+      }
     }
 
-    acc[tokenId]?.internalOptions.push(internalOption);
-    return acc;
-  }, {});
+    // Calculate amount for each expired option using same logic as get-positions
+    for (const token of filteredGroupedOptions) {
+      try {
+        let totalAmount = JSBI.BigInt(0);
 
-  // Filter out tokens that have no eligible internal options
-  const filteredGroupedOptions = Object.values(groupedOptions).filter(
-    (token) => token.internalOptions.length > 0
-  );
+        const firstInternal = token.internalOptions[0];
+        const pool = firstInternal?.pool as string | undefined;
+        if (!pool) {
+          token.amount = "0";
+          continue;
+        }
 
-  return c.json({ options: filteredGroupedOptions });
+        const poolConfig = poolConfigMap.get(pool);
+        if (!poolConfig) {
+          token.amount = "0";
+          continue;
+        }
+
+        const useAmount0 =
+          token.isCall &&
+          typeof token.callAsset === "string" &&
+          token.callAsset.toLowerCase() === poolConfig.token0.toLowerCase();
+
+        for (const internalOption of token.internalOptions) {
+          try {
+            const tickLower = Number(internalOption.tickLower);
+            const tickUpper = Number(internalOption.tickUpper);
+            const sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+            const sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+            const liquidity = JSBI.BigInt(internalOption.liquidityAtLive || "0");
+
+            let optionAmount;
+            if (useAmount0) {
+              optionAmount = SqrtPriceMath.getAmount0Delta(
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                liquidity,
+                true
+              );
+            } else {
+              optionAmount = SqrtPriceMath.getAmount0Delta(
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                liquidity,
+                true
+              );
+            }
+
+            totalAmount = JSBI.add(totalAmount, optionAmount);
+          } catch (error) {
+            console.error(
+              `Error calculating amount for expired option ${token.tokenId}:`,
+              error
+            );
+          }
+        }
+
+        token.amount = totalAmount.toString();
+      } catch (error) {
+        console.error(
+          `Failed amount calculation for expired option ${token.tokenId}:`,
+          error
+        );
+        token.amount = "0";
+      }
+    }
+
+    // Omit callAsset/putAsset from response to preserve shape; add amount
+    const responseOptions = filteredGroupedOptions.map(({ callAsset, putAsset, ...rest }) => rest);
+
+    return c.json({ options: responseOptions });
+  } catch (error) {
+    console.error("Error in expired-options endpoint:", error);
+    return c.json(
+      {
+        error: "Failed to fetch expired options",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      500
+    );
+  }
 });
 
 app.get("/get-strategy", async (c) => {
@@ -635,7 +776,7 @@ app.get("/get-positions", async (c) => {
   // Get the API URL from environment variables
   const ratesApiUrl = "https://exercisesettlementenginemonad-production.up.railway.app/get-rates";
   // Set timeout for API requests (in milliseconds)
-  const apiTimeout = parseInt(process.env.API_TIMEOUT || "60000"); // Default 10 seconds
+  const apiTimeout = parseInt(process.env.API_TIMEOUT || "60000");
 
   // Validate input parameters
   if (!address) {
